@@ -1,0 +1,25 @@
+Initialize OpenGL
+Initialize CUDA
+
+Read ARG
+Load image from disk into Texture
+Setup CUDA Kernels
+
+Create Initial Generations (Islands?)
+
+Loop
+	Pass Current Generations (Islands?) to CUDA
+	Run KERNELS
+		Per DNA
+			Draw to Texture
+			Compare with original
+			Assign Score
+		End
+	End
+
+	Copy best result Texture
+	Draw result and target texture on screen
+
+	Use results to create new Generations
+End
+	
