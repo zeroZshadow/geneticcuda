@@ -7,6 +7,9 @@
     <Filter Include="code">
       <UniqueIdentifier>{d2e0d8b8-f103-4ed5-a8d4-a60cd7247a90}</UniqueIdentifier>
     </Filter>
+    <Filter Include="code\precompiled">
+      <UniqueIdentifier>{dfd590c7-8f54-4e84-b6c3-0557250c1a75}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu">
@@ -17,5 +20,15 @@
     <ClCompile Include="main.cpp">
       <Filter>code</Filter>
     </ClCompile>
+    <ClCompile Include="tools.cpp" />
+    <ClCompile Include="StdAfx.cpp">
+      <Filter>code\precompiled</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="tools.h" />
+    <ClInclude Include="StdAfx.h">
+      <Filter>code\precompiled</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

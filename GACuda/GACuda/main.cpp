@@ -1,12 +1,4 @@
-#ifdef _WIN32
-#  define WINDOWS_LEAN_AND_MEAN
-#  define NOMINMAX
-#  include <windows.h>
-#pragma warning(disable:4996)
-#endif
-
-#include <GL/glew.h>
-#include <GL/freeglut.h>
+#include "StdAfx.h"
 
 // CUDA includes
 #include <cuda_runtime.h>
@@ -18,6 +10,8 @@
 
 #include <helper_functions.h>
 #include <rendercheck_gl.h>
+
+#include "tools.h"
 
 // Shared Library Test Functions
 #define MAX_EPSILON 10
@@ -37,6 +31,7 @@ unsigned int window_height = 512;
 unsigned int image_width = 512;
 unsigned int image_height = 512;
 int iGLUTWindowHandle = 0;          // handle to the GLUT window
+GLuint textureId = 0;
 
 bool enable_cuda     = true;
 
@@ -77,12 +72,18 @@ void renderScene(bool colorScale)
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    glViewport(0, 0, 512, 512);
-
-    glEnable(GL_LIGHTING);
-    glEnable(GL_DEPTH_TEST);
-
 	//Draw here
+
+	glBindTexture(GL_TEXTURE_2D, textureId);
+
+	glBegin(GL_QUADS);
+	glTexCoord2f(0, 0); glVertex3f(0, 0, 0);
+	glTexCoord2f(0, 1); glVertex3f(0, 256, 0);
+	glTexCoord2f(1, 1); glVertex3f(256, 256, 0);
+	glTexCoord2f(1, 0); glVertex3f(256, 0, 0);
+	glEnd();
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 
     SDK_CHECK_ERROR_GL();
 }
@@ -160,6 +161,7 @@ int main(int argc, char **argv)
 void FreeResource()
 {
     cudaDeviceReset();
+	til::TIL_ShutDown();
 
     if (iGLUTWindowHandle)
     {
@@ -192,6 +194,9 @@ void runStdProgram(int argc, char **argv)
     // Now initialize CUDA context (GL context has been created already)
     initCUDA(argc, argv, true);
 
+	//Initialize TinyImageLoader
+	til::TIL_Init();
+
     // register callbacks
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
@@ -208,6 +213,9 @@ void runStdProgram(int argc, char **argv)
            "\t(right click mouse button for Menu)\n"
            "\t[esc] - Quit\n\n"
           );
+
+	//Load test program
+	textureId = tools::loadTexture("./assets/test.png");
 
     // start rendering mainloop
     glutMainLoop();
@@ -262,6 +270,8 @@ bool initGL(int *argc, char **argv)
     glClearColor(0.5, 0.5, 0.5, 1.0);
 
     glDisable(GL_DEPTH_TEST);
+	glDisable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
 
     // viewport
     glViewport(0, 0, window_width, window_height);
@@ -269,7 +279,7 @@ bool initGL(int *argc, char **argv)
     // projection
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(60.0, (GLfloat)window_width / (GLfloat) window_height, 0.1f, 10.0f);
+	glOrtho(0.0, window_width, window_height, 0.0, -1.0, 1.0);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
