@@ -10,6 +10,18 @@
     <Filter Include="code\precompiled">
       <UniqueIdentifier>{dfd590c7-8f54-4e84-b6c3-0557250c1a75}</UniqueIdentifier>
     </Filter>
+    <Filter Include="code\genetic">
+      <UniqueIdentifier>{5d938c96-9314-48d8-bf7c-acc11c15d538}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="code\twister">
+      <UniqueIdentifier>{5ed7033a-cbcf-4ab9-9c26-41411de54a67}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="code\helper">
+      <UniqueIdentifier>{e8b55c2f-56fc-42ed-a0ca-df0bc80fd736}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="code\cuda">
+      <UniqueIdentifier>{4a9892ea-03e5-4a54-a128-4e9e0a83efbd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu">
@@ -20,15 +32,64 @@
     <ClCompile Include="main.cpp">
       <Filter>code</Filter>
     </ClCompile>
-    <ClCompile Include="tools.cpp" />
     <ClCompile Include="StdAfx.cpp">
       <Filter>code\precompiled</Filter>
     </ClCompile>
+    <ClCompile Include="framework.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="dnaString.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
+    <ClCompile Include="dnaTriangle.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
+    <ClCompile Include="dnaPoint.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
+    <ClCompile Include="dnaColor.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
+    <ClCompile Include="mtrand.cpp">
+      <Filter>code\twister</Filter>
+    </ClCompile>
+    <ClCompile Include="settings.cpp">
+      <Filter>code\helper</Filter>
+    </ClCompile>
+    <ClCompile Include="tools.cpp">
+      <Filter>code\helper</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="tools.h" />
     <ClInclude Include="StdAfx.h">
       <Filter>code\precompiled</Filter>
+    </ClInclude>
+    <ClInclude Include="framework.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="dnaString.h">
+      <Filter>code\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="dnaTriangle.h">
+      <Filter>code\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="dnaPoint.h">
+      <Filter>code\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="dnaColor.h">
+      <Filter>code\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="mtrand.h">
+      <Filter>code\twister</Filter>
+    </ClInclude>
+    <ClInclude Include="tools.h">
+      <Filter>code\helper</Filter>
+    </ClInclude>
+    <ClInclude Include="settings.h">
+      <Filter>code\helper</Filter>
+    </ClInclude>
+    <ClInclude Include="cudaProcess.h">
+      <Filter>code\cuda</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

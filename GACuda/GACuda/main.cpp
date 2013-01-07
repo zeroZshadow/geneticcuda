@@ -1,8 +1,7 @@
 #include "StdAfx.h"
 
 // CUDA includes
-#include <cuda_runtime.h>
-#include <cuda_gl_interop.h>
+//StdAfx
 
 // CUDA utilities and system includes
 #include <helper_cuda.h>
@@ -11,32 +10,21 @@
 #include <helper_functions.h>
 #include <rendercheck_gl.h>
 
-#include "tools.h"
+#include "framework.h"
 
-// Shared Library Test Functions
-#define MAX_EPSILON 10
 #define REFRESH_DELAY     10 //ms
 
-const char *sSDKname = "postProcessGL";
-
-unsigned int g_TotalErrors = 0;
-
-// CheckFBO/BackBuffer class objects
-CheckRender *g_CheckRender = NULL;
-
-////////////////////////////////////////////////////////////////////////////////
 // constants / global variables
+char* window_title = "Genetic Cuda";
 unsigned int window_width = 512;
 unsigned int window_height = 512;
-unsigned int image_width = 512;
-unsigned int image_height = 512;
 int iGLUTWindowHandle = 0;          // handle to the GLUT window
-GLuint textureId = 0;
-
-bool enable_cuda     = true;
 
 int   *pArgc = NULL;
 char **pArgv = NULL;
+
+//program declaration
+framework* program;
 
 // Forward declarations
 void runStdProgram(int argc, char **argv);
@@ -44,7 +32,7 @@ void FreeResource();
 void Cleanup(int iExitCode);
 
 // GL functionality
-bool initCUDA(int argc, char **argv, bool bUseGL);
+bool initCUDA(int argc, char **argv);
 bool initGL(int *argc, char **argv);
 
 // rendering callbacks
@@ -54,48 +42,12 @@ void keyboard(unsigned char key, int x, int y);
 void reshape(int w, int h);
 void mainMenu(int i);
 
-////////////////////////////////////////////////////////////////////////////////
-//! Run the Cuda part of the computation
-////////////////////////////////////////////////////////////////////////////////
-void process(int width, int height, int radius)
-{
-
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//! render a simple 3D scene
-////////////////////////////////////////////////////////////////////////////////
-void renderScene(bool colorScale)
-{
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-	//Draw here
-
-	glBindTexture(GL_TEXTURE_2D, textureId);
-
-	glBegin(GL_QUADS);
-	glTexCoord2f(0, 0); glVertex3f(0, 0, 0);
-	glTexCoord2f(0, 1); glVertex3f(0, 256, 0);
-	glTexCoord2f(1, 1); glVertex3f(256, 256, 0);
-	glTexCoord2f(1, 0); glVertex3f(256, 0, 0);
-	glEnd();
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-    SDK_CHECK_ERROR_GL();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//! Display callback
-////////////////////////////////////////////////////////////////////////////////
 void display()
 {
-	renderScene(false);
+	program->process();
+	program->renderScene();
 
-    cudaDeviceSynchronize(); // ?
+    cudaDeviceSynchronize();
 
     // flip backbuffer
     glutSwapBuffers();
@@ -107,11 +59,7 @@ void timerEvent(int value)
     glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//! Keyboard events handler
-////////////////////////////////////////////////////////////////////////////////
-void
-keyboard(unsigned char key, int /*x*/, int /*y*/)
+void keyboard(unsigned char key, int /*x*/, int /*y*/)
 {
     switch (key)
     {
@@ -132,9 +80,7 @@ void mainMenu(int i)
     keyboard((unsigned char) i, 0, 0);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Program main
-////////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char **argv)
 {
     printf("%s Starting...\n\n", argv[0]);
@@ -150,16 +96,15 @@ int main(int argc, char **argv)
 
     pArgc = &argc;
     pArgv = argv;
+
 	runStdProgram(argc, argv);
 
     exit(EXIT_SUCCESS);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//!
-////////////////////////////////////////////////////////////////////////////////
 void FreeResource()
 {
+	delete program;
     cudaDeviceReset();
 	til::TIL_ShutDown();
 
@@ -179,25 +124,20 @@ void Cleanup(int iExitCode)
     exit(EXIT_SUCCESS);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//! Run standard demo loop with or without GL verification
-////////////////////////////////////////////////////////////////////////////////
 void runStdProgram(int argc, char **argv)
 {
-    // First initialize OpenGL context, so we can properly set the GL for CUDA.
-    // This is necessary in order to achieve optimal performance with OpenGL/CUDA interop.
     if (false == initGL(&argc, argv))
     {
         return;
     }
 
-    // Now initialize CUDA context (GL context has been created already)
-    initCUDA(argc, argv, true);
+    // Initialize CUDA context
+    initCUDA(argc, argv);
 
-	//Initialize TinyImageLoader
+	// Initialize TinyImageLoader
 	til::TIL_Init();
 
-    // register callbacks
+    // Register callbacks
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
     glutReshapeFunc(reshape);
@@ -214,10 +154,8 @@ void runStdProgram(int argc, char **argv)
            "\t[esc] - Quit\n\n"
           );
 
-	//Load test program
-	textureId = tools::loadTexture("./assets/test.png");
-
     // start rendering mainloop
+	program = new framework();
     glutMainLoop();
 
     // Normally unused return path
@@ -227,17 +165,9 @@ void runStdProgram(int argc, char **argv)
 ////////////////////////////////////////////////////////////////////////////////
 //! Initialize CUDA context
 ////////////////////////////////////////////////////////////////////////////////
-bool initCUDA(int argc, char **argv, bool bUseGL)
+bool initCUDA(int argc, char **argv)
 {
-    if (bUseGL)
-    {
-        findCudaGLDevice(argc, (const char **)argv);
-    }
-    else
-    {
-        findCudaDevice(argc, (const char **)argv);
-    }
-
+	findCudaGLDevice(argc, (const char **)argv);
     return true;
 }
 
@@ -250,7 +180,7 @@ bool initGL(int *argc, char **argv)
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowSize(window_width, window_height);
-    iGLUTWindowHandle = glutCreateWindow("Genetic Cuda");
+    iGLUTWindowHandle = glutCreateWindow(window_title);
 
     // initialize necessary OpenGL extensions
     glewInit();

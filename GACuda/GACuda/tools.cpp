@@ -8,14 +8,14 @@ GLuint tools::loadTexture(char* aFilename)
 
 	//Load terrain textures
 	til::Image* image;
-	GLuint textureId;
-	image = til::TIL_Load(aFilename, TIL_FILE_ABSOLUTEPATH | TIL_DEPTH_A8B8G8R8);	//Side
+	GLuint textureId = 0;
+	image = til::TIL_Load(aFilename, TIL_FILE_ABSOLUTEPATH | TIL_DEPTH_A8B8G8R8);
 
 	glGenTextures(1, &textureId);
 
 	if(image == 0 || textureId == 0)
 	{
-		printf("> Could not load texture\n");
+		printf("> Could not load texture\n (%i, %i)", image, textureId);
 		return 0;
 	}
 
@@ -34,4 +34,23 @@ GLuint tools::loadTexture(char* aFilename)
 
 	til::TIL_Release(image);
 	return textureId;
+}
+
+UINT tools::nextRandom()
+{
+	MTRand_int32 irand;
+	return irand();
+}
+
+int tools::randomBetween( int min, int max )
+{
+	if (min == max) return min;
+
+	MTRand_int32 irand;
+	return (irand()%(max-min))+min;
+}
+
+bool tools::willMutate( UINT rate )
+{
+	return (randomBetween(0, rate) == 0);
 }

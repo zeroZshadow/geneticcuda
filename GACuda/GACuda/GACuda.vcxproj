@@ -63,6 +63,9 @@
       <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
 copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
+    <CudaCompile>
+      <CodeGeneration>compute_20,sm_20</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -84,18 +87,36 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
 copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
+    <CudaCompile>
+      <CodeGeneration>compute_20,sm_20</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="dnaColor.cpp" />
+    <ClCompile Include="dnaPoint.cpp" />
+    <ClCompile Include="dnaString.cpp" />
+    <ClCompile Include="dnaTriangle.cpp" />
+    <ClCompile Include="framework.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mtrand.cpp" />
+    <ClCompile Include="settings.cpp" />
     <ClCompile Include="StdAfx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="tools.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cudaProcess.h" />
+    <ClInclude Include="dnaColor.h" />
+    <ClInclude Include="dnaPoint.h" />
+    <ClInclude Include="dnaString.h" />
+    <ClInclude Include="dnaTriangle.h" />
+    <ClInclude Include="framework.h" />
+    <ClInclude Include="mtrand.h" />
+    <ClInclude Include="settings.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="tools.h" />
   </ItemGroup>

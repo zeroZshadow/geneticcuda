@@ -9,5 +9,15 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 
+//CUDA
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
+
 //TIL
 #include "TinyImageLoader.h"
+
+//STD
+#include <vector>
+
+//Mersenne Twister
+#include "mtrand.h"
