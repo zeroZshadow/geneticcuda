@@ -1,14 +1,19 @@
-#include <stdio.h>
+#include "dnaGeneration.h"
 
-__global__ void
-cudaProcess()
+__global__ void initProcess()
 {
-	//Grid == island
-	//block == DNA
+
 }
 
-extern "C" void
-launch_cudaProcess(dim3 grid, dim3 block, int sbytes)
+__global__ void fitnessProcess()
 {
-        cudaProcess<<< grid, block, sbytes >>>();
+
+}
+
+extern "C" void launch_fitnessProcess(dim3 grid, dim3 block)
+{
+	//dnaGeneration* generations = new dnaGeneration[grid.x];
+	initProcess<<< grid, block >>>();
+	fitnessProcess<<< grid, block >>>();
+	//delete[] generations;
 }

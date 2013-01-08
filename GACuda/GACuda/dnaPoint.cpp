@@ -3,71 +3,42 @@
 
 #include "tools.h"
 #include "settings.h"
+#include <minmax.h>
 
-dnaPoint::dnaPoint(void)
+void initPoint( dnaPoint& self )
 {
-	m_pos.x = 0;
-	m_pos.y = 0;
+	self.m_pos.x = tools::randomBetweenUINT(0, settings::imageInfo.imageWidth);
+	self.m_pos.y = tools::randomBetweenUINT(0, settings::imageInfo.imageHeight);
 }
 
-void dnaPoint::init()
+void printPoint( dnaPoint& self, char* pad )
 {
-	m_pos.x = tools::randomBetween(0, settings::imageInfo.imageWidth);
-	m_pos.y = tools::randomBetween(0, settings::imageInfo.imageHeight);
+	printf("%sx:%u y:%u\n", pad, self.m_pos.x, self.m_pos.y);
 }
 
-void dnaPoint::print( char* pad )
+void clonePoint ( dnaPoint& self, dnaPoint& clone )
 {
-	printf("%sx:%u y:%u\n", pad, m_pos.x, m_pos.y);
+	clone.m_pos = self.m_pos;
 }
 
-void dnaPoint::clone(dnaPoint* p)
+void mutatePoint( dnaPoint& self )
 {
-	p->m_pos = m_pos;
-}
 
-void dnaPoint::mutate()
-{
-	/*
-	if (Tools.WillMutate(Settings.ActiveMovePointMaxMutationRate))
+	if (tools::willMutate(settings::mutationRates.pointMaxMoveMutationRate))
 	{
-	X = Tools.GetRandomNumber(0, Tools.MaxWidth);
-	Y = Tools.GetRandomNumber(0, Tools.MaxHeight);
-	drawing.SetDirty();
+		self.m_pos.x = tools::randomBetween(0, settings::imageInfo.imageWidth);
+		self.m_pos.y = tools::randomBetween(0, settings::imageInfo.imageHeight);
 	}
 
-	if (Tools.WillMutate(Settings.ActiveMovePointMidMutationRate))
+	if (tools::willMutate(settings::mutationRates.pointMidMoveMutationRate))
 	{
-	X =
-	Math.Min(
-	Math.Max(0,
-	X +
-	Tools.GetRandomNumber(-Settings.ActiveMovePointRangeMid,
-	Settings.ActiveMovePointRangeMid)), Tools.MaxWidth);
-	Y =
-	Math.Min(
-	Math.Max(0,
-	Y +
-	Tools.GetRandomNumber(-Settings.ActiveMovePointRangeMid,
-	Settings.ActiveMovePointRangeMid)), Tools.MaxHeight);
-	drawing.SetDirty();
+		self.m_pos.x = min( max(0, self.m_pos.x + tools::randomBetween(-settings::mutationRanges.pointMidMoveRange, settings::mutationRanges.pointMidMoveRange)), settings::imageInfo.imageWidth);
+		self.m_pos.y = min( max(0, self.m_pos.y + tools::randomBetween(-settings::mutationRanges.pointMidMoveRange, settings::mutationRanges.pointMidMoveRange)), settings::imageInfo.imageHeight);
 	}
 
-	if (Tools.WillMutate(Settings.ActiveMovePointMinMutationRate))
+	if (tools::willMutate(settings::mutationRates.pointMinMoveMutationRate))
 	{
-	X =
-	Math.Min(
-	Math.Max(0,
-	X +
-	Tools.GetRandomNumber(-Settings.ActiveMovePointRangeMin,
-	Settings.ActiveMovePointRangeMin)), Tools.MaxWidth);
-	Y =
-	Math.Min(
-	Math.Max(0,
-	Y +
-	Tools.GetRandomNumber(-Settings.ActiveMovePointRangeMin,
-	Settings.ActiveMovePointRangeMin)), Tools.MaxHeight);
-	drawing.SetDirty();
+		self.m_pos.x = min( max(0, self.m_pos.x + tools::randomBetween(-settings::mutationRanges.pointMinMoveRange, settings::mutationRanges.pointMinMoveRange)), settings::imageInfo.imageWidth);
+		self.m_pos.y = min( max(0, self.m_pos.y + tools::randomBetween(-settings::mutationRanges.pointMinMoveRange, settings::mutationRanges.pointMinMoveRange)), settings::imageInfo.imageHeight);
 	}
-	*/
 }

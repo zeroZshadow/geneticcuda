@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="kernels">
-      <UniqueIdentifier>{a8443936-3ab2-43e3-b9a1-37ff6cc8a605}</UniqueIdentifier>
-    </Filter>
     <Filter Include="code">
       <UniqueIdentifier>{d2e0d8b8-f103-4ed5-a8d4-a60cd7247a90}</UniqueIdentifier>
     </Filter>
@@ -22,10 +19,13 @@
     <Filter Include="code\cuda">
       <UniqueIdentifier>{4a9892ea-03e5-4a54-a128-4e9e0a83efbd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="code\cuda\kernels">
+      <UniqueIdentifier>{a8443936-3ab2-43e3-b9a1-37ff6cc8a605}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu">
-      <Filter>kernels</Filter>
+      <Filter>code\cuda\kernels</Filter>
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
@@ -38,18 +38,6 @@
     <ClCompile Include="framework.cpp">
       <Filter>code</Filter>
     </ClCompile>
-    <ClCompile Include="dnaString.cpp">
-      <Filter>code\genetic</Filter>
-    </ClCompile>
-    <ClCompile Include="dnaTriangle.cpp">
-      <Filter>code\genetic</Filter>
-    </ClCompile>
-    <ClCompile Include="dnaPoint.cpp">
-      <Filter>code\genetic</Filter>
-    </ClCompile>
-    <ClCompile Include="dnaColor.cpp">
-      <Filter>code\genetic</Filter>
-    </ClCompile>
     <ClCompile Include="mtrand.cpp">
       <Filter>code\twister</Filter>
     </ClCompile>
@@ -59,6 +47,21 @@
     <ClCompile Include="tools.cpp">
       <Filter>code\helper</Filter>
     </ClCompile>
+    <ClCompile Include="dnaTriangle.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
+    <ClCompile Include="dnaStrain.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
+    <ClCompile Include="dnaPoint.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
+    <ClCompile Include="dnaGeneration.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
+    <ClCompile Include="dnaColor.cpp">
+      <Filter>code\genetic</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="StdAfx.h">
@@ -66,9 +69,6 @@
     </ClInclude>
     <ClInclude Include="framework.h">
       <Filter>code</Filter>
-    </ClInclude>
-    <ClInclude Include="dnaString.h">
-      <Filter>code\genetic</Filter>
     </ClInclude>
     <ClInclude Include="dnaTriangle.h">
       <Filter>code\genetic</Filter>
@@ -88,8 +88,14 @@
     <ClInclude Include="settings.h">
       <Filter>code\helper</Filter>
     </ClInclude>
+    <ClInclude Include="dnaGeneration.h">
+      <Filter>code\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="dnaStrain.h">
+      <Filter>code\genetic</Filter>
+    </ClInclude>
     <ClInclude Include="cudaProcess.h">
-      <Filter>code\cuda</Filter>
+      <Filter>code</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

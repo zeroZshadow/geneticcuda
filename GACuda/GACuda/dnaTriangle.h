@@ -2,17 +2,13 @@
 #include "dnaPoint.h"
 #include "dnaColor.h"
 
-class dnaTriangle
+struct dnaTriangle
 {
-public:
-	dnaTriangle(void);
-
-	void init();
-	void clone(dnaTriangle* triangle);
-	void mutate();
-	void print(char* pad = "");
-
 	dnaPoint m_points[3];
 	dnaColor m_color;
 };
 
+void initTriangle( dnaTriangle& self );
+void cloneTriangle( dnaTriangle& self, dnaTriangle& clone );
+void mutateTriangle( dnaTriangle& self );
+void printTriangle( dnaTriangle& self, char* pad = "" );

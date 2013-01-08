@@ -1,14 +1,11 @@
 #pragma once
-class dnaPoint
+
+struct dnaPoint
 {
-public:
-	dnaPoint(void);
-
-	void init();
-	void clone(dnaPoint* p);
-	void mutate();
-	void print(char* pad = "");
-
 	uint2 m_pos;
 };
 
+void initPoint( dnaPoint& self );
+void clonePoint( dnaPoint& self, dnaPoint& clone );
+void mutatePoint( dnaPoint& self );
+void printPoint( dnaPoint& self, char* pad = "");

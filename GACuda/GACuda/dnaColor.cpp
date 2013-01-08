@@ -4,55 +4,46 @@
 #include "tools.h"
 #include "settings.h"
 
-
-dnaColor::dnaColor(void)
+void initColor(dnaColor& self)
 {
-	m_components.x = 0;
-	m_components.y = 0;
-	m_components.z = 0;
-	m_components.w = 0;
+	self.m_components.x = tools::randomBetween(settings::mutationRanges.redRangeMin,	settings::mutationRanges.redRangeMax);
+	self.m_components.y = tools::randomBetween(settings::mutationRanges.greenRangeMin,	settings::mutationRanges.greenRangeMax);
+	self.m_components.z = tools::randomBetween(settings::mutationRanges.blueRangeMin,	settings::mutationRanges.blueRangeMax);
+	self.m_components.w = tools::randomBetween(settings::mutationRanges.alphaRangeMin,	settings::mutationRanges.alphaRangeMax);
 }
 
-void dnaColor::init()
+void printColor(dnaColor& self, char* pad )
 {
-	m_components.x = tools::randomBetween(settings::mutationRanges.redRangeMin,		settings::mutationRanges.redRangeMax);
-	m_components.y = tools::randomBetween(settings::mutationRanges.greenRangeMin,	settings::mutationRanges.greenRangeMax);
-	m_components.z = tools::randomBetween(settings::mutationRanges.blueRangeMin,	settings::mutationRanges.blueRangeMax);
-	m_components.w = tools::randomBetween(settings::mutationRanges.alphaRangeMin,	settings::mutationRanges.alphaRangeMax);
-}
-
-void dnaColor::print( char* pad )
-{
-	printf("%s0x%08X\n", pad, m_color);
+	printf("%s0x%08X\n", pad, self.m_color);
+	uchar4& m_components = self.m_components;
 	printf("%sr:%u g:%u b:%u a:%u\n", pad, m_components.x, m_components.y, m_components.z, m_components.w);
 }
 
-void dnaColor::clone( dnaColor* color )
+void cloneColor(dnaColor& self, dnaColor& clone )
 {
-	color->m_color = m_color;
+	clone.m_color = self.m_color;
 }
 
-void dnaColor::mutate()
+void mutateColor(dnaColor& self)
 {
-	/*
-	if (Tools.WillMutate(Settings.ActiveRedMutationRate))
+	uchar4& m_components = self.m_components;
+	if (tools::willMutate(settings::mutationRates.redMutationRate))
 	{
-		Red = Tools.GetRandomNumber(Settings.ActiveRedRangeMin, Settings.ActiveRedRangeMax);
+		m_components.x = tools::randomBetween(settings::mutationRanges.redRangeMin, settings::mutationRanges.redRangeMax);
 	}
 
-	if (Tools.WillMutate(Settings.ActiveGreenMutationRate))
+	if (tools::willMutate(settings::mutationRates.greenMutationRate))
 	{
-		Green = Tools.GetRandomNumber(Settings.ActiveGreenRangeMin, Settings.ActiveGreenRangeMax);
+		m_components.y = tools::randomBetween(settings::mutationRanges.greenRangeMin, settings::mutationRanges.greenRangeMax);
 	}
 
-	if (Tools.WillMutate(Settings.ActiveBlueMutationRate))
+	if (tools::willMutate(settings::mutationRates.blueMutationRate))
 	{
-		Blue = Tools.GetRandomNumber(Settings.ActiveBlueRangeMin, Settings.ActiveBlueRangeMax);
+		m_components.z = tools::randomBetween(settings::mutationRanges.blueRangeMin, settings::mutationRanges.blueRangeMax);
 	}
 
-	if (Tools.WillMutate(Settings.ActiveAlphaMutationRate))
+	if (tools::willMutate(settings::mutationRates.alphaMutationRate))
 	{
-		Alpha = Tools.GetRandomNumber(Settings.ActiveAlphaRangeMin, Settings.ActiveAlphaRangeMax);
+		 m_components.w = tools::randomBetween(settings::mutationRanges.alphaRangeMin, settings::mutationRanges.alphaRangeMax);
 	}
-	*/
 }

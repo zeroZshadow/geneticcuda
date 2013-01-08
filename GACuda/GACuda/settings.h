@@ -1,5 +1,10 @@
 #pragma once
 
+struct GenerationInfo
+{
+	UINT generationSize;
+};
+
 struct MutationRates
 {
 	//mutation ranges
@@ -15,9 +20,9 @@ struct MutationRates
 	UINT pointMinMoveMutationRate;
 
 	//String
-	UINT stringAddTriangleMutationRate;
-	UINT stringRemoveTriangleMutationRate;
-	UINT stringMoveTriangleMutationRate;
+	UINT strainAddTriangleMutationRate;
+	UINT strainRemoveTriangleMutationRate;
+	UINT strainMoveTriangleMutationRate;
 };
 
 struct MutationRanges
@@ -33,12 +38,12 @@ struct MutationRanges
 	UINT blueRangeMax;
 
 	//Point
-	UINT pointMidMoveRange;
-	UINT pointMinMoveRange;
+	int pointMidMoveRange;
+	int pointMinMoveRange;
 
 	//String
-	UINT stringMinTriangles;
-	UINT stringMaxTriangles;
+	UINT strainMinTriangles;
+	UINT strainMaxTriangles;
 };
 
 struct ImageInfo
@@ -56,6 +61,7 @@ public:
 	static MutationRates mutationRates;
 	static MutationRanges mutationRanges;
 	static ImageInfo imageInfo;
+	static GenerationInfo generationInfo;
 private:
 	void initInstance(MutationRates* rates, MutationRanges* ranges, ImageInfo* info);
 	void reset();

@@ -5,6 +5,7 @@ settings* settings::instance = 0;
 MutationRates settings::mutationRates;
 MutationRanges settings::mutationRanges;
 ImageInfo settings::imageInfo;
+GenerationInfo settings::generationInfo;
 
 void settings::init()
 {
@@ -13,12 +14,15 @@ void settings::init()
 	instance->initInstance(0, 0, 0);
 }
 
+//TODO UPDATE
 void settings::init( MutationRates* rates, MutationRanges* ranges, ImageInfo* info )
 {
 	if (instance) return;
 	instance = new settings();
 	instance->initInstance(rates, ranges, info);
 }
+
+//TODO UPDATE
 void settings::initInstance( MutationRates* rates, MutationRanges* ranges, ImageInfo* info )
 {
 	if (!(rates && ranges && info))
@@ -60,10 +64,13 @@ void settings::reset()
 	mutationRanges.pointMidMoveRange		= 20;
 	mutationRanges.pointMinMoveRange		= 3;
 
-	//String
-	mutationRates.stringAddTriangleMutationRate		= 700;
-	mutationRates.stringRemoveTriangleMutationRate	= 1500;
-	mutationRates.stringMoveTriangleMutationRate	= 500;
-	mutationRanges.stringMinTriangles = 1;
-	mutationRanges.stringMaxTriangles = 255;
+	//Strain
+	mutationRates.strainAddTriangleMutationRate		= 700;
+	mutationRates.strainRemoveTriangleMutationRate	= 1500;
+	mutationRates.strainMoveTriangleMutationRate	= 500;
+	mutationRanges.strainMinTriangles = 1;
+	mutationRanges.strainMaxTriangles = 255;
+
+	//
+	generationInfo.generationSize = 32;
 }

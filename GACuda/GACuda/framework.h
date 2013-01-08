@@ -11,5 +11,7 @@ public:
 private:
 	GLuint m_TargetTexture;
 	GLuint m_BestTexture;
+
+
 };
 

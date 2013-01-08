@@ -96,8 +96,9 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dnaColor.cpp" />
+    <ClCompile Include="dnaGeneration.cpp" />
     <ClCompile Include="dnaPoint.cpp" />
-    <ClCompile Include="dnaString.cpp" />
+    <ClCompile Include="dnaStrain.cpp" />
     <ClCompile Include="dnaTriangle.cpp" />
     <ClCompile Include="framework.cpp" />
     <ClCompile Include="main.cpp" />
@@ -111,8 +112,9 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <ClInclude Include="cudaProcess.h" />
     <ClInclude Include="dnaColor.h" />
+    <ClInclude Include="dnaGeneration.h" />
     <ClInclude Include="dnaPoint.h" />
-    <ClInclude Include="dnaString.h" />
+    <ClInclude Include="dnaStrain.h" />
     <ClInclude Include="dnaTriangle.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="mtrand.h" />

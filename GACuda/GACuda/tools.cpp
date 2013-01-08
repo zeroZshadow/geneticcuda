@@ -44,7 +44,17 @@ UINT tools::nextRandom()
 
 int tools::randomBetween( int min, int max )
 {
-	if (min == max) return min;
+	if (min == max)
+		return min;
+
+	MTRand_int32 irand;
+	return (irand()%(max-min))+min;
+}
+
+UINT tools::randomBetweenUINT( UINT min, UINT max )
+{
+	if (min == max)
+		return min;
 
 	MTRand_int32 irand;
 	return (irand()%(max-min))+min;
@@ -52,5 +62,5 @@ int tools::randomBetween( int min, int max )
 
 bool tools::willMutate( UINT rate )
 {
-	return (randomBetween(0, rate) == 0);
+	return (randomBetweenUINT(0, rate) == 0);
 }

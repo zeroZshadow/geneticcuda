@@ -63,11 +63,10 @@ void framework::renderScene()
 void framework::process()
 {
 	//Eval current Generations
-	dim3 grid(1, 1, 1); //islands
-	dim3 block(32, 1, 1); //generations
-	int sbytes = 0; //shared memory
+	dim3 grid(32, 1, 1); //islands
+	dim3 block(settings::generationInfo.generationSize, 1, 1); //generations
 
-	launch_cudaProcess(grid, block, sbytes);
+	launch_fitnessProcess(grid, block);
 	cudaError e = cudaGetLastError();
 	if (e != cudaSuccess)
 	{
