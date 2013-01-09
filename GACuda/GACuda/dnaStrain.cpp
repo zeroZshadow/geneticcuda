@@ -1,4 +1,6 @@
 #include "StdAfx.h"
+
+/*
 #include "dnaStrain.h"
 #include "dnaTriangle.h"
 
@@ -8,8 +10,8 @@
 void initStrain( dnaStrain& self )
 {
 	self.m_triangleCount = 0;
-	self.m_triangles = new dnaTriangle[settings::mutationRanges.strainMaxTriangles];
-	for( unsigned int i = 0; i < settings::mutationRanges.strainMinTriangles; ++i)
+	self.m_triangles = new dnaTriangle[settings.mutationRanges.strainMaxTriangles];
+	for( unsigned int i = 0; i < settings.mutationRanges.strainMinTriangles; ++i)
 	{
 		addTriangle(self);
 	}
@@ -48,10 +50,10 @@ void cloneStrain( dnaStrain& self, dnaStrain& clone )
 
 void mutateStrain( dnaStrain& self )
 {
-	if (tools::willMutate(settings::mutationRates.strainAddTriangleMutationRate))
+	if (tools::willMutate(settings.mutationRates.strainAddTriangleMutationRate))
 		addTriangle(self);
 
-	if (tools::willMutate(settings::mutationRates.strainRemoveTriangleMutationRate))
+	if (tools::willMutate(settings.mutationRates.strainRemoveTriangleMutationRate))
 		removeTriangle(self);
 
 	for( unsigned int i = 0; i < self.m_triangleCount; ++i)
@@ -62,7 +64,7 @@ void mutateStrain( dnaStrain& self )
 
 void removeTriangle( dnaStrain& self )
 {
-	if (self.m_triangleCount > settings::mutationRanges.strainMinTriangles)
+	if (self.m_triangleCount > settings.mutationRanges.strainMinTriangles)
 	{
 		const unsigned int offset = tools::randomBetweenUINT(0, self.m_triangleCount); //Exclusive
 
@@ -75,7 +77,7 @@ void removeTriangle( dnaStrain& self )
 
 void addTriangle( dnaStrain& self )
 {
-	if (self.m_triangleCount < settings::mutationRanges.strainMaxTriangles)
+	if (self.m_triangleCount < settings.mutationRanges.strainMaxTriangles)
 	{
 		//TODO: Always add at the end ? if drawing is additive
 		const unsigned int offset = tools::randomBetweenUINT(0, self.m_triangleCount); //Exclusive
@@ -87,4 +89,4 @@ void addTriangle( dnaStrain& self )
 
 		self.m_triangleCount++;
 	}
-}
+}*/

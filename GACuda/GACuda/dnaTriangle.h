@@ -1,3 +1,4 @@
+/*
 #pragma once
 #include "dnaPoint.h"
 #include "dnaColor.h"
@@ -11,4 +12,4 @@ struct dnaTriangle
 void initTriangle( dnaTriangle& self );
 void cloneTriangle( dnaTriangle& self, dnaTriangle& clone );
 void mutateTriangle( dnaTriangle& self );
-void printTriangle( dnaTriangle& self, char* pad = "" );
+void printTriangle( dnaTriangle& self, char* pad = "" );*/

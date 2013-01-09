@@ -1,4 +1,6 @@
 #include "StdAfx.h"
+
+/*
 #include "dnaColor.h"
 
 #include "tools.h"
@@ -6,10 +8,10 @@
 
 void initColor(dnaColor& self)
 {
-	self.m_components.x = tools::randomBetween(settings::mutationRanges.redRangeMin,	settings::mutationRanges.redRangeMax);
-	self.m_components.y = tools::randomBetween(settings::mutationRanges.greenRangeMin,	settings::mutationRanges.greenRangeMax);
-	self.m_components.z = tools::randomBetween(settings::mutationRanges.blueRangeMin,	settings::mutationRanges.blueRangeMax);
-	self.m_components.w = tools::randomBetween(settings::mutationRanges.alphaRangeMin,	settings::mutationRanges.alphaRangeMax);
+	self.m_components.x = tools::randomBetween(settings.mutationRanges.redRangeMin,	settings.mutationRanges.redRangeMax);
+	self.m_components.y = tools::randomBetween(settings.mutationRanges.greenRangeMin,	settings.mutationRanges.greenRangeMax);
+	self.m_components.z = tools::randomBetween(settings.mutationRanges.blueRangeMin,	settings.mutationRanges.blueRangeMax);
+	self.m_components.w = tools::randomBetween(settings.mutationRanges.alphaRangeMin,	settings.mutationRanges.alphaRangeMax);
 }
 
 void printColor(dnaColor& self, char* pad )
@@ -27,23 +29,24 @@ void cloneColor(dnaColor& self, dnaColor& clone )
 void mutateColor(dnaColor& self)
 {
 	uchar4& m_components = self.m_components;
-	if (tools::willMutate(settings::mutationRates.redMutationRate))
+	if (tools::willMutate(settings.mutationRates.redMutationRate))
 	{
-		m_components.x = tools::randomBetween(settings::mutationRanges.redRangeMin, settings::mutationRanges.redRangeMax);
+		m_components.x = tools::randomBetween(settings.mutationRanges.redRangeMin, settings.mutationRanges.redRangeMax);
 	}
 
-	if (tools::willMutate(settings::mutationRates.greenMutationRate))
+	if (tools::willMutate(settings.mutationRates.greenMutationRate))
 	{
-		m_components.y = tools::randomBetween(settings::mutationRanges.greenRangeMin, settings::mutationRanges.greenRangeMax);
+		m_components.y = tools::randomBetween(settings.mutationRanges.greenRangeMin, settings.mutationRanges.greenRangeMax);
 	}
 
-	if (tools::willMutate(settings::mutationRates.blueMutationRate))
+	if (tools::willMutate(settings.mutationRates.blueMutationRate))
 	{
-		m_components.z = tools::randomBetween(settings::mutationRanges.blueRangeMin, settings::mutationRanges.blueRangeMax);
+		m_components.z = tools::randomBetween(settings.mutationRanges.blueRangeMin, settings.mutationRanges.blueRangeMax);
 	}
 
-	if (tools::willMutate(settings::mutationRates.alphaMutationRate))
+	if (tools::willMutate(settings.mutationRates.alphaMutationRate))
 	{
-		 m_components.w = tools::randomBetween(settings::mutationRanges.alphaRangeMin, settings::mutationRanges.alphaRangeMax);
+		 m_components.w = tools::randomBetween(settings.mutationRanges.alphaRangeMin, settings.mutationRanges.alphaRangeMax);
 	}
 }
+*/

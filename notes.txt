@@ -1,0 +1,6 @@
+cudaGetDeviceProperties to get cuda cores
+
+look at deviceQuery example to see how
+
+make ATLEAST as many islands as there are multiprocessors
+

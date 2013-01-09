@@ -21,3 +21,5 @@
 
 //Mersenne Twister
 #include "mtrand.h"
+
+#include "ErrorCheck.h"

@@ -1,3 +1,4 @@
+/*
 #pragma once
 
 #include "dnaTriangle.h"
@@ -16,4 +17,4 @@ void printStrain(dnaStrain& self);
 
 //mutations
 void removeTriangle(dnaStrain& self);
-void addTriangle(dnaStrain& self);
+void addTriangle(dnaStrain& self);*/

@@ -1,11 +1,13 @@
 #include "StdAfx.h"
+
+/*
 #include "dnaGeneration.h"
 
 #include "settings.h"
 
 void initGeneration( dnaGeneration& self )
 {
-	self.m_strains = new dnaStrain[settings::generationInfo.generationSize];
+	self.m_strains = new dnaStrain[settings.generationInfo.strainCount];
 }
 
 void cleanGeneration( dnaGeneration& self )
@@ -16,8 +18,8 @@ void cleanGeneration( dnaGeneration& self )
 
 void cloneGeneration( dnaGeneration& self, dnaGeneration& clone )
 {
-	for( int i = 0; i < settings::generationInfo.generationSize; ++i)
+	for( int i = 0; i < settings.generationInfo.strainCount; ++i)
 	{
 		cloneStrain(self.m_strains[i], clone.m_strains[i]);
 	}
-}
+}*/

@@ -96,7 +96,6 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dnaColor.cpp" />
-    <ClCompile Include="dnaGeneration.cpp" />
     <ClCompile Include="dnaPoint.cpp" />
     <ClCompile Include="dnaStrain.cpp" />
     <ClCompile Include="dnaTriangle.cpp" />
@@ -112,15 +111,23 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <ClInclude Include="cudaProcess.h" />
     <ClInclude Include="dnaColor.h" />
-    <ClInclude Include="dnaGeneration.h" />
     <ClInclude Include="dnaPoint.h" />
     <ClInclude Include="dnaStrain.h" />
     <ClInclude Include="dnaTriangle.h" />
+    <ClInclude Include="ErrorCheck.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="mtrand.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="tools.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cudaTools.cuh" />
+    <None Include="dnaColor.cuh" />
+    <None Include="dnaPoint.cuh" />
+    <None Include="dnaStructures.cuh" />
+    <None Include="dnaTriangle.cuh" />
+    <None Include="rasterizer.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

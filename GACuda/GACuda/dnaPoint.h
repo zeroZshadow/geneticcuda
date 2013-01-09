@@ -1,3 +1,4 @@
+/*
 #pragma once
 
 struct dnaPoint
@@ -8,4 +9,4 @@ struct dnaPoint
 void initPoint( dnaPoint& self );
 void clonePoint( dnaPoint& self, dnaPoint& clone );
 void mutatePoint( dnaPoint& self );
-void printPoint( dnaPoint& self, char* pad = "");
+void printPoint( dnaPoint& self, char* pad = "");*/
