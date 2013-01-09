@@ -12,6 +12,8 @@
 //CUDA
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
+#include <curand.h>
+#include <curand_kernel.h>
 
 //TIL
 #include "TinyImageLoader.h"

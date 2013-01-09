@@ -18,19 +18,27 @@ framework::framework(void)
 	m_cudaColors = 0;
 	m_cudaTriangleCounts = 0;
 	m_cudaDrawBuffer = 0;
+	m_cudaBestBuffer = 0;
+	m_cudaRandState = 0;
+	m_cudaRasterLines = 0;
 
 	m_drawBufferSize = 0;
 
 	//Initialize textures
 	m_TargetTexture = tools::loadTexture("./assets/test.png");
-	m_BestTexture = tools::loadTexture("./assets/test.png");
-
 	CudaSafeCall(cudaGraphicsGLRegisterImage(&m_cudaTargetTexture, m_TargetTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsReadOnly));
-	CudaSafeCall(cudaGraphicsGLRegisterImage(&m_cudaBestTexture, m_BestTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard));
 
-	//Initialize settings and upload to the GPU
+	//Initialize settings
 	initSettings(m_settings);
-	uploadSettings(m_settings);
+
+	//Initialize RNG
+	setupRNG(m_settings);
+
+	//Upload constants to CUDA
+	uploadConstants(m_settings, m_cudaRandState);
+
+	//Create best texture memory
+	createBestTexture();
 
 	//Allocate gpu memory blocks
 	allocateGMem();
@@ -46,6 +54,9 @@ framework::~framework(void)
 	cudaFree(m_cudaColors);
 	cudaFree(m_cudaTriangleCounts);
 	cudaFree(m_cudaDrawBuffer);
+	cudaFree(m_cudaBestBuffer);
+	cudaFree(m_cudaRandState);
+	cudaFree(m_cudaRasterLines);
 }
 
 void framework::initialize()
@@ -54,27 +65,53 @@ void framework::initialize()
 	dim3 grid(m_settings.generationInfo.islandCount, 1, 1); //islands
 	dim3 block(m_settings.generationInfo.strainCount, 1, 1); //generations per island
 
+	printf( "Initialize RNG\n");
+	launch_cudaSetupRNG(grid, block);
+	CudaCheckError();
+
 	printf("Initialize DNA\n");
 	launch_cudaInitialize(grid, block, m_cudaTriangleCounts, m_cudaTriangles, m_cudaColors);
 	CudaCheckError();
 }
 
+static int imageIndex = 0;
 void framework::process()
 {
 	//Map target texture
 	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaTargetTexture));
 	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaBestTexture));
 
+	//Clear draw buffers
+	CudaSafeCall(cudaMemset(m_cudaDrawBuffer, 0, m_drawBufferSize));
+	int num_texels = m_settings.imageInfo.imageWidth * m_settings.imageInfo.imageHeight;
+	int size_tex_data = sizeof(UINT) * num_texels;
+
 	//Eval current Generations
 	dim3 grid(m_settings.generationInfo.islandCount, 1, 1); //islands
 	dim3 block(m_settings.generationInfo.strainCount, 1, 1); //generations per island
 
-	cudaMemset(m_cudaDrawBuffer, 0, m_drawBufferSize);
-
+	//Render strains in drawbuffer
 	launch_cudaRender(grid, block,
-		m_cudaTriangleCounts, m_cudaTriangles, m_cudaColors, m_cudaDrawBuffer
+		m_cudaTriangleCounts, m_cudaTriangles, m_cudaColors, m_cudaDrawBuffer, m_cudaRasterLines
 	);
 	CudaCheckError();
+
+	//Perform fitness function
+	launch_cudaFitness(grid, block,
+		m_cudaDrawBuffer, m_cudaBestBuffer
+	);
+	CudaCheckError();
+
+	//Copy best image from buffer to array
+	//TEMP
+	imageIndex = (imageIndex + 1) % 256;
+	UINT* imagebuffer = (UINT*)m_cudaDrawBuffer;
+	CudaSafeCall(cudaMemcpy(m_cudaBestBuffer, &imagebuffer[imageIndex*num_texels], size_tex_data ,cudaMemcpyDeviceToDevice));
+
+	//Copy bestTexture to texture
+	cudaArray *arrayPtr;
+	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&arrayPtr, m_cudaBestTexture, 0, 0));
+	CudaSafeCall(cudaMemcpyToArray(arrayPtr, 0, 0, m_cudaBestBuffer, size_tex_data, cudaMemcpyDeviceToDevice));
 
 	//Unmap for rendering
 	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaBestTexture));
@@ -123,14 +160,17 @@ void framework::allocateGMem()
 	int S = m_settings.generationInfo.islandCount * m_settings.generationInfo.strainCount;
 	int TM = m_settings.mutationRanges.strainMaxTriangles;
 
-	printf("allocating %i strains (times 2)\n", S);
+	printf("allocating %i strains divided over %i islands\n", S, m_settings.generationInfo.islandCount);
 	printf("each strain is %i triangles\n", TM);
 
+	//Multiply data by 2 to hold older generations
 	int countsize = sizeof(int) * S * 2;
 	int trianglesize = sizeof(uint2) * 3 * TM * S * 2;
 	int colorsize = sizeof(UINT) * TM * S * 2;
+	int bestsize = sizeof(UINT) * m_settings.imageInfo.imageWidth * m_settings.imageInfo.imageHeight;
+	int rasterlinesize = sizeof(int2) * S * m_settings.imageInfo.imageHeight;
 	m_drawBufferSize = sizeof(UINT) * S * m_settings.imageInfo.imageWidth * m_settings.imageInfo.imageHeight;
-	printf("Total size is %i bytes\n", countsize+trianglesize+colorsize+m_drawBufferSize);
+	printf("Total size is %i bytes\n", countsize+trianglesize+colorsize+bestsize+m_drawBufferSize+rasterlinesize);
 
 	//Allocate block holding triangle counts
 	CudaSafeCall(cudaMalloc((void**) &m_cudaTriangleCounts, countsize));
@@ -143,4 +183,32 @@ void framework::allocateGMem()
 
 	//Allocate block for holding drawn strain data
 	CudaSafeCall(cudaMalloc((void**) &m_cudaDrawBuffer, m_drawBufferSize));
+
+	//Allocate block for holding best result texture
+	CudaSafeCall(cudaMalloc((void**) &m_cudaBestBuffer, bestsize));
+
+	CudaSafeCall(cudaMalloc((void**) &m_cudaRasterLines, rasterlinesize));
+}
+
+void framework::setupRNG(Settings& settings)
+{
+	int S = m_settings.generationInfo.islandCount * m_settings.generationInfo.strainCount;
+	CudaSafeCall(cudaMalloc((void**) &m_cudaRandState, S*sizeof(curandState)));
+}
+
+void framework::createBestTexture()
+{
+	glGenTextures(1, &m_BestTexture);
+	glBindTexture(GL_TEXTURE_2D, m_BestTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_settings.imageInfo.imageWidth, m_settings.imageInfo.imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+	CudaSafeCall(cudaGraphicsGLRegisterImage(&m_cudaBestTexture, m_BestTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsNone));
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 }

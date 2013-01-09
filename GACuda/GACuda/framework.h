@@ -9,9 +9,11 @@ public:
 
 	void process();
 	void initialize();
+	void setupRNG(Settings& settings);
 
 	void renderScene();
 	void allocateGMem();
+	void createBestTexture();
 
 private:
 	GLuint m_TargetTexture;
@@ -24,6 +26,9 @@ private:
 	void* m_cudaColors;
 	void* m_cudaTriangleCounts;
 	void* m_cudaDrawBuffer;
+	void* m_cudaBestBuffer;
+	curandState* m_cudaRandState;
+	void* m_cudaRasterLines;
 
 	int m_drawBufferSize;
 

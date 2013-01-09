@@ -13,6 +13,11 @@ inline void __cudaSafeCall( cudaError err, const char *file, const int line )
 #ifdef CUDA_ERROR_CHECK
 	if ( cudaSuccess != err )
 	{
+		char buffer [256];
+		sprintf_s(buffer,  "cudaSafeCall() failed at %s:%i : %s\n",
+			file, line, cudaGetErrorString( err ) );
+
+		OutputDebugString(buffer);
 		fprintf( stderr, "cudaSafeCall() failed at %s:%i : %s\n",
 			file, line, cudaGetErrorString( err ) );
 		exit( -1 );

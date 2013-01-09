@@ -26,7 +26,7 @@ void initSettings(Settings& settings)
 	settings.mutationRates.pointMidMoveMutationRate	= 1500;
 	settings.mutationRates.pointMinMoveMutationRate	= 1500;
 	settings.mutationRanges.pointMidMoveRange		= 20;
-	settings.mutationRanges.pointMinMoveRange		= 3;
+	settings.mutationRanges.pointMinMoveRange		= 30;
 
 	//Strain
 	settings.mutationRates.strainAddTriangleMutationRate	= 700;

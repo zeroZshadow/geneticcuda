@@ -20,6 +20,10 @@ unsigned int window_width = 512;
 unsigned int window_height = 512;
 int iGLUTWindowHandle = 0;          // handle to the GLUT window
 
+static int fpsCount = 0;
+static int fpsLimit = 1;
+StopWatchInterface *timer = NULL;
+
 int   *pArgc = NULL;
 char **pArgv = NULL;
 
@@ -44,13 +48,30 @@ void mainMenu(int i);
 
 void display()
 {
+	sdkStartTimer(&timer);
+
 	program->process();
 	program->renderScene();
-
     cudaDeviceSynchronize();
+
+	sdkStopTimer(&timer);
 
     // flip backbuffer
     glutSwapBuffers();
+
+
+	// Update fps counter, fps/title display and log
+	if (++fpsCount == fpsLimit)
+	{
+		char cTitle[256];
+		float t = sdkGetAverageTimerValue(&timer);
+		float fps = 1000.0f / t;
+		sprintf(cTitle, "%s (%d x %d): %.1f fps", window_title, window_width, window_height, fps);
+		glutSetWindowTitle(cTitle);
+		fpsCount = 0;
+		fpsLimit = (int)((fps > 1.0f) ? fps : 1.0f);
+		sdkResetTimer(&timer);
+	}
 }
 
 void timerEvent(int value)
@@ -104,6 +125,8 @@ int main(int argc, char **argv)
 
 void FreeResource()
 {
+	sdkDeleteTimer(&timer);
+
 	delete program;
     cudaDeviceReset();
 	til::TIL_ShutDown();
@@ -133,6 +156,9 @@ void runStdProgram(int argc, char **argv)
 
     // Initialize CUDA context
     initCUDA(argc, argv);
+
+	sdkCreateTimer(&timer);
+	sdkResetTimer(&timer);
 
 	// Initialize TinyImageLoader
 	til::TIL_Init();

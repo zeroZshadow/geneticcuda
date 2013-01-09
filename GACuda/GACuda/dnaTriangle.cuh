@@ -1,9 +1,6 @@
 #ifndef __DNATRIANGLE__
 #define __DNATRIANGLE__
 
-#define min(x, y) x < y ? x : y
-#define max(x, y) x > y ? x : y
-
 __device__ inline void initTriangle(Triangle& triangleData, Settings& settings)
 {
 	int2 origin;
@@ -11,8 +8,9 @@ __device__ inline void initTriangle(Triangle& triangleData, Settings& settings)
 
 	for( unsigned int j=0; j < 3; ++j)
 	{
-		triangleData.point[j].x = min(max(0, origin.x + randomBetween(-3, 3)), settings.imageInfo.imageWidth);
-		triangleData.point[j].y = min(max(0, origin.x + randomBetween(-3, 3)), settings.imageInfo.imageHeight);
+		int moveRadius = settings.mutationRanges.pointMinMoveRange;
+		triangleData.point[j].x = clamp(origin.x + randomBetween(-moveRadius, moveRadius), 0, settings.imageInfo.imageWidth-1);
+		triangleData.point[j].y = clamp(origin.y + randomBetween(-moveRadius, moveRadius), 0, settings.imageInfo.imageHeight-1);
 	}
 }
 

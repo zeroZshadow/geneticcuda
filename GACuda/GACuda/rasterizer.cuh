@@ -3,14 +3,6 @@
 
 #include <stdio.h>
 
-#define min(x, y) x < y ? x : y
-#define max(x, y) x > y ? x : y
-
-__device__ int clamp(int x, int a, int b)
-{
-    return max(a, min(b, x));
-}
-
 __device__ void clearRaster(int2* rasterLines, int& rasterStart, int& rasterEnd, Settings& settings)
 {
 	for(int line = rasterStart; line <= rasterEnd; ++line){
@@ -35,31 +27,25 @@ __device__ void passLine(int2& p1, int2& p2, int2* rasterLines, int& rasterStart
 	//dy
 	float dy = (float)point2.y - (float)point1.y;
 	if (dy == 0.0f) dy = 1.0f;
-	float rcpDY = 1.0f / dy;
 
 	//Get Slopes
-	float	dx = (point2.x - point1.x) * rcpDY;
+	const float	dx = (point2.x - point1.x) /dy;
 
-	int iY1 = point1.y;
-	int iY2 = point2.y;
+	const int iY1 = point1.y;
+	const int iY2 = point2.y;
+	float x = (float)point1.x;
 
-	//Init and subpixel correction
-	const float fix = 1.0f - ((float)point1.y - iY1);
-	float x = (float)point1.x + dx * fix;
-	++iY1;
+	rasterStart = min(iY1, rasterStart);
+	rasterEnd = max(iY2, rasterEnd);
 
-	for (int y = iY1; y <= iY2; y++){
-		rasterStart = min(y, rasterStart);
-		rasterEnd = max(y, rasterEnd);
-
-		rasterLines[y].x = min(x, rasterLines[y].x);
-		rasterLines[y].y = max(x, rasterLines[y].y);
-
+	for (int y = iY1; y <= iY2; ++y){
+		rasterLines[y].x = min((int)x, rasterLines[y].x);
+		rasterLines[y].y = max((int)x, rasterLines[y].y);
 		x += dx;
 	}
 }
 
-__device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd, uchar4* drawBuffer, float4& color, Settings& settings)
+__device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd, uchar4* drawBuffer, float4& color, Settings& settings, int id)
 {
 	int width = settings.imageInfo.imageWidth;
 
@@ -74,13 +60,15 @@ __device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd
 		const int length = iXmax - iXmin;
 		for(int i=0; i <= length; ++i){
 			uchar4 dst = *(buffer + iXmin + i);
-			uchar4 result;
-			result.x = clamp(dst.x + color.x, 0, 255);
-			result.x = clamp(dst.y + color.y, 0, 255);
-			result.x = clamp(dst.z + color.z, 0, 255);
-			result.x = clamp(dst.w + color.w, 0, 255);
+			float4 fdst = make_float4(dst.x, dst.y, dst.z, dst.w);
+			uchar4 result = make_uchar4(
+				clamp(fdst.x + color.x, 0.0f, 255.0f),
+				clamp(fdst.y + color.y, 0.0f, 255.0f),
+				clamp(fdst.z + color.z, 0.0f, 255.0f),
+				255
+			);
 
-			*(buffer + iXmin + i) = result;
+			*(buffer + iXmin + i) = result;		
 		}
 		buffer += width;
 	}
