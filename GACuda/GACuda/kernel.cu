@@ -15,6 +15,8 @@
 
 __device__ __constant__ Settings g_settings;
 
+texture<uchar4, 2, cudaReadModeElementType> texTarget;
+
 __global__ void initProcess( void* counts, void* triangles, void* colors )
 {
 	int strainId = (blockDim.x * blockIdx.x) + threadIdx.x;
@@ -89,9 +91,40 @@ __global__ void renderProcess(  void* counts, void* triangles, void* colors, voi
 	}
 }
 
-__global__ void fitnessProcess(  void* draw )
+__global__ void fitnessProcess(  void* draw, void* fitnessData )
 {
 	//Calculate fitness of strain
+	int strainId = (blockDim.x * blockIdx.x) + threadIdx.x;
+	unsigned int fitness = 0;
+
+	uint2* fitnessBuffer = (uint2*)fitnessData;
+
+	//Drawbuffer
+	const int height = g_settings.imageInfo.imageHeight;
+	const int width = g_settings.imageInfo.imageWidth;
+	const int drawOffset = strainId * width * height;
+	uchar4* drawBuffer = (uchar4*)draw;
+	drawBuffer = &drawBuffer[drawOffset];
+
+	int x = 0;
+	int index = 0;
+	for( int y=0; y < height; ++y)
+	{
+		for( x=0; x < width; ++x)
+		{
+			uchar4 utarget = tex2D(texTarget, x, y);
+			uchar4 ustrain = drawBuffer[index];
+			
+			int r = utarget.x - ustrain.x;
+			int g = utarget.y - ustrain.y;
+			int b = utarget.z - ustrain.z;
+
+			fitness += (unsigned int)(r*r + g*g + b*b);
+			++index;
+		}
+	}
+
+	fitnessBuffer[strainId] = make_uint2(fitness, strainId);
 }
 
 __global__ void initRNG()
@@ -116,9 +149,13 @@ extern "C" void launch_cudaRender(dim3 grid, dim3 block, void* counts, void* tri
 	renderProcess<<< grid, block >>>( counts, triangles, colors, draw, raster );
 }
 
-extern "C" void launch_cudaFitness(dim3 grid, dim3 block, void* draw, void* best)
+extern "C" void launch_cudaFitness(dim3 grid, dim3 block, void* draw, void* best , cudaArray* targetArray, void* fitness )
 {
-	fitnessProcess<<< grid, block >>>( draw );
+	cudaBindTextureToArray(texTarget, targetArray);
+	struct cudaChannelFormatDesc desc;
+	cudaGetChannelDesc(&desc, targetArray);
+
+	fitnessProcess<<< grid, block >>>( draw, fitness );
 }
 
 extern "C" void uploadConstants(Settings& settings, curandState* randState)

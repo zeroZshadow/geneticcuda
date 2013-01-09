@@ -97,25 +97,23 @@
     <ClInclude Include="ErrorCheck.h">
       <Filter>code\cuda</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="cudaTools.cuh">
+    <ClInclude Include="dnaColor.cuh">
+      <Filter>code\cuda\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="dnaStructures.cuh">
+      <Filter>code\cuda\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="dnaTriangle.cuh">
+      <Filter>code\cuda\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="dnaPoint.cuh">
+      <Filter>code\cuda\genetic</Filter>
+    </ClInclude>
+    <ClInclude Include="rasterizer.cuh">
       <Filter>code\cuda\kernels</Filter>
-    </None>
-    <None Include="dnaPoint.cuh">
-      <Filter>code\cuda\genetic</Filter>
-    </None>
-    <None Include="dnaTriangle.cuh">
-      <Filter>code\cuda\genetic</Filter>
-    </None>
-    <None Include="dnaStructures.cuh">
-      <Filter>code\cuda\genetic</Filter>
-    </None>
-    <None Include="dnaColor.cuh">
-      <Filter>code\cuda\genetic</Filter>
-    </None>
-    <None Include="rasterizer.cuh">
+    </ClInclude>
+    <ClInclude Include="cudaTools.cuh">
       <Filter>code\cuda\kernels</Filter>
-    </None>
+    </ClInclude>
   </ItemGroup>
 </Project>

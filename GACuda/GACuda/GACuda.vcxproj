@@ -127,12 +127,24 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="tools.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cudaTools.cuh" />
-    <None Include="dnaColor.cuh" />
-    <None Include="dnaPoint.cuh" />
-    <None Include="dnaStructures.cuh" />
-    <None Include="dnaTriangle.cuh" />
-    <None Include="rasterizer.cuh" />
+    <ClInclude Include="cudaTools.cuh">
+      <FileType>Document</FileType>
+    </ClInclude>
+    <ClInclude Include="dnaColor.cuh">
+      <FileType>Document</FileType>
+    </ClInclude>
+    <ClInclude Include="dnaPoint.cuh">
+      <FileType>Document</FileType>
+    </ClInclude>
+    <ClInclude Include="dnaStructures.cuh">
+      <FileType>Document</FileType>
+    </ClInclude>
+    <ClInclude Include="dnaTriangle.cuh">
+      <FileType>Document</FileType>
+    </ClInclude>
+    <ClInclude Include="rasterizer.cuh">
+      <FileType>Document</FileType>
+    </ClInclude>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

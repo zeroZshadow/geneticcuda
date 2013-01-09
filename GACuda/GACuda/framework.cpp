@@ -21,6 +21,7 @@ framework::framework(void)
 	m_cudaBestBuffer = 0;
 	m_cudaRandState = 0;
 	m_cudaRasterLines = 0;
+	m_cudaFitness = 0;
 
 	m_drawBufferSize = 0;
 
@@ -57,6 +58,7 @@ framework::~framework(void)
 	cudaFree(m_cudaBestBuffer);
 	cudaFree(m_cudaRandState);
 	cudaFree(m_cudaRasterLines);
+	cudaFree(m_cudaFitness);
 }
 
 void framework::initialize()
@@ -77,10 +79,6 @@ void framework::initialize()
 static int imageIndex = 0;
 void framework::process()
 {
-	//Map target texture
-	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaTargetTexture));
-	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaBestTexture));
-
 	//Clear draw buffers
 	CudaSafeCall(cudaMemset(m_cudaDrawBuffer, 0, m_drawBufferSize));
 	int num_texels = m_settings.imageInfo.imageWidth * m_settings.imageInfo.imageHeight;
@@ -97,25 +95,27 @@ void framework::process()
 	CudaCheckError();
 
 	//Perform fitness function
+	cudaArray *targetArrayPtr;
+	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaTargetTexture));
+	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&targetArrayPtr, m_cudaTargetTexture, 0, 0));
 	launch_cudaFitness(grid, block,
-		m_cudaDrawBuffer, m_cudaBestBuffer
+		m_cudaDrawBuffer, m_cudaBestBuffer, targetArrayPtr, m_cudaFitness
 	);
 	CudaCheckError();
+	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaTargetTexture));
 
-	//Copy best image from buffer to array
+	//Copy best image from buffer to texture
 	//TEMP
-	imageIndex = (imageIndex + 1) % 256;
+	//imageIndex = (imageIndex + 1) % 256;
 	UINT* imagebuffer = (UINT*)m_cudaDrawBuffer;
 	CudaSafeCall(cudaMemcpy(m_cudaBestBuffer, &imagebuffer[imageIndex*num_texels], size_tex_data ,cudaMemcpyDeviceToDevice));
 
 	//Copy bestTexture to texture
 	cudaArray *arrayPtr;
+	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaBestTexture));
 	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&arrayPtr, m_cudaBestTexture, 0, 0));
 	CudaSafeCall(cudaMemcpyToArray(arrayPtr, 0, 0, m_cudaBestBuffer, size_tex_data, cudaMemcpyDeviceToDevice));
-
-	//Unmap for rendering
 	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaBestTexture));
-	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaTargetTexture));
 }
 
 void framework::renderScene()
@@ -169,8 +169,9 @@ void framework::allocateGMem()
 	int colorsize = sizeof(UINT) * TM * S * 2;
 	int bestsize = sizeof(UINT) * m_settings.imageInfo.imageWidth * m_settings.imageInfo.imageHeight;
 	int rasterlinesize = sizeof(int2) * S * m_settings.imageInfo.imageHeight;
+	int fitnesssize = sizeof(uint2) * S;
 	m_drawBufferSize = sizeof(UINT) * S * m_settings.imageInfo.imageWidth * m_settings.imageInfo.imageHeight;
-	printf("Total size is %i bytes\n", countsize+trianglesize+colorsize+bestsize+m_drawBufferSize+rasterlinesize);
+	printf("Total size is %i bytes\n", countsize+trianglesize+colorsize+bestsize+m_drawBufferSize+rasterlinesize+fitnesssize);
 
 	//Allocate block holding triangle counts
 	CudaSafeCall(cudaMalloc((void**) &m_cudaTriangleCounts, countsize));
@@ -187,7 +188,11 @@ void framework::allocateGMem()
 	//Allocate block for holding best result texture
 	CudaSafeCall(cudaMalloc((void**) &m_cudaBestBuffer, bestsize));
 
+	//Allocate block for rasterizing triangles
 	CudaSafeCall(cudaMalloc((void**) &m_cudaRasterLines, rasterlinesize));
+
+	//Allocate block for holding fitness data per strain
+	CudaSafeCall(cudaMalloc((void**) &m_cudaFitness, fitnesssize));
 }
 
 void framework::setupRNG(Settings& settings)

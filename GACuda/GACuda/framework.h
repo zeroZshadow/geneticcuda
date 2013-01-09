@@ -29,6 +29,7 @@ private:
 	void* m_cudaBestBuffer;
 	curandState* m_cudaRandState;
 	void* m_cudaRasterLines;
+	void* m_cudaFitness;
 
 	int m_drawBufferSize;
 

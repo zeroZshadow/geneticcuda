@@ -14,7 +14,7 @@ extern "C" void
 
 extern "C" void
 	launch_cudaFitness(dim3 grid, dim3 block,
-		void* draw, void* best
+		void* draw, void* best, cudaArray* targetArray, void* fitness
 	);
 
 struct Settings;
