@@ -106,8 +106,11 @@ void framework::process()
 	cudaArray *targetArrayPtr;
 	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaTargetTexture));
 	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&targetArrayPtr, m_cudaTargetTexture, 0, 0));
-	launch_cudaFitness(grid, block, targetArrayPtr);
+
+	dim3 fitnessblock(m_settings.generationInfo.strainCount, 4, 1);
+	launch_cudaFitness(grid, fitnessblock, targetArrayPtr);
 	CudaCheckError();
+
 	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaTargetTexture));
 
 	//WHAT IS THAT? THE IMAGE IS EVOLVING!!
@@ -116,6 +119,7 @@ void framework::process()
 
 	//DISPLAY BEST IMAGE
 	uint2 bestStrain = getBestId(m_settings, m_cudaFitness);
+	CudaCheckError();
 	if (bestStrain.x < m_BestStrain.x) //Update stats when new best is better then overall best
 	{
 		m_BestStrain = bestStrain;
@@ -123,7 +127,13 @@ void framework::process()
 
 		//Copy best from drawBuffer to bestBuffer
 		UINT* imagebuffer = (UINT*)m_cudaDrawBuffer;
+		const unsigned int dpitch = m_settings.generationInfo.islandCount * m_settings.generationInfo.strainCount * sizeof(UINT);
+
+#if 0
 		CudaSafeCall(cudaMemcpy(m_cudaBestBuffer, &imagebuffer[m_BestStrain.y*num_texels], size_tex_data ,cudaMemcpyDeviceToDevice));
+#else
+		CudaSafeCall(cudaMemcpy2D(m_cudaBestBuffer, sizeof(UINT), &imagebuffer[m_BestStrain.y], dpitch , sizeof(UINT), m_settings.imageInfo.imageHeight * m_settings.imageInfo.imageWidth, cudaMemcpyDeviceToDevice));
+#endif
 
 		//Update texture
 		updateBestTexture();
@@ -195,7 +205,8 @@ void framework::allocateGMem()
 	CudaSafeCall(cudaMalloc((void**) &m_cudaColors, colorsize));
 
 	//Allocate block for holding drawn strain data
-	CudaSafeCall(cudaMalloc((void**) &m_cudaDrawBuffer, m_drawBufferSize));
+	size_t pitch;
+	CudaSafeCall(cudaMallocPitch((void**) &m_cudaDrawBuffer, &pitch, sizeof(UINT) * S * m_settings.imageInfo.imageWidth, m_settings.imageInfo.imageHeight));
 
 	//Allocate block for holding best result texture
 	CudaSafeCall(cudaMalloc((void**) &m_cudaBestBuffer, bestsize));

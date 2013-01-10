@@ -1,4 +1,5 @@
 #define IRASTER
+#define IDRAW
 
 //Pre include
 #include <helper_cuda.h>
@@ -107,8 +108,12 @@ __global__ void renderProcess()
 
 	//Offset drawbuffer
 	const int imagesize = g_settings.imageInfo.imageWidth * g_settings.imageInfo.imageHeight;
+#ifndef IDRAW
 	const int drawOffset = idx * imagesize;
 	uchar4* drawBuffer = &g_drawBuffer[drawOffset];
+#else
+	uchar4* drawBuffer = &g_drawBuffer[idx];
+#endif
 
 	//Initialize raster
 	int rasterStart = 0;
@@ -149,6 +154,7 @@ __global__ void fitnessProcess()
 	//Calculate fitness of strain
 	const int strainId = getGenerationStrainId();
 	const int idx = getIndex();
+	const int strains = blockDim.x * gridDim.x;
 	unsigned int fitness = 0;
 
 	//Grab global pointers
@@ -157,12 +163,23 @@ __global__ void fitnessProcess()
 	//Drawbuffer
 	const int height = g_settings.imageInfo.imageHeight;
 	const int width = g_settings.imageInfo.imageWidth;
+
+#ifndef IDRAW
 	const int drawOffset = idx * width * height;
 	const uchar4* drawBuffer = &g_drawBuffer[drawOffset];
+#else
+	const uchar4* drawBuffer = &g_drawBuffer[idx];
+#endif
 
 	int x = 0;
-	int index = 0;
-	for (int y = 0; y < height; ++y)
+	int y = (height / blockDim.y) * threadIdx.y;
+	const int ymax = (height / blockDim.y) * (threadIdx.y+1);
+#ifndef IDRAW
+	int index = y * width;
+#else
+	int index = strains * y * width;
+#endif
+	for (; y < ymax; ++y)
 	{
 		for (x = 0; x < width; ++x)
 		{
@@ -174,11 +191,17 @@ __global__ void fitnessProcess()
 			const int b = utarget.z - ustrain.z;
 
 			fitness += (unsigned int)(r*r + g*g + b*b);
-			index++;
+#ifndef IDRAW
+			++index;
+#else
+			index += strains;
+#endif
 		}
 	}
-
-	fitnessBuffer[idx] = make_uint2(fitness, idx);
+	
+	fitnessBuffer[idx] = make_uint2(0, idx);
+	__syncthreads();
+	atomicAdd((unsigned int*)&fitnessBuffer[idx], fitness);
 }
 
 __global__ void evolveProcess()
@@ -187,13 +210,13 @@ __global__ void evolveProcess()
 	const int strainFutureId = getFutureStrainId();
 	const int idx = getIndex();
 
-	//const int maxstrains = g_settings.generationInfo.strainCount * g_settings.generationInfo.islandCount;
+	const int maxstrains = g_settings.generationInfo.strainCount * g_settings.generationInfo.islandCount;
 
 	//Tournament selection
 	//Pick a random strain from this island
 	//(strainId + randomBetween(0, maxstrains-1)) % maxstrains;
-	const int randomNumber = (threadIdx.x + randomBetween(0, g_settings.generationInfo.strainCount-1)) % g_settings.generationInfo.strainCount;
-	const int randomIdx = (blockDim.x * blockIdx.x) + randomNumber; //scale id to be global //randomNumber;//
+	const int randomNumber = (idx + randomBetween(0, maxstrains-1)) % maxstrains;//(threadIdx.x + randomBetween(0, g_settings.generationInfo.strainCount-1)) % g_settings.generationInfo.strainCount;
+	const int randomIdx = randomNumber;//(blockDim.x * blockIdx.x) + randomNumber; //scale id to be global
 	const int randomGenerationId = indexToGenerationIndex(randomIdx);
 
 	//Compare scores
@@ -216,45 +239,44 @@ __global__ void evolveProcess()
 			//MUTATE POINTS
 			for( int pointIdx = 0; pointIdx < 3; ++pointIdx)
 			{
+				int2& point = g_triangleData[indexFuture].point[pointIdx];
 				if ( willMutate(g_settings.mutationRates.pointMinMoveMutationRate))
 				{
-					int2& point = g_triangleData[indexFuture].point[pointIdx];
-					point.x = clamp(point.x + randomBetween(-g_settings.mutationRanges.pointMinMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageWidth);
-					point.y = clamp(point.y + randomBetween(-g_settings.mutationRanges.pointMinMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageHeight);
+					point.x = clamp(point.x + randomBetween(-g_settings.mutationRanges.pointMinMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageWidth-1);
+					point.y = clamp(point.y + randomBetween(-g_settings.mutationRanges.pointMinMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageHeight-1);
 
 				}
 
 				if ( willMutate(g_settings.mutationRates.pointMidMoveMutationRate))
 				{
-					int2& point = g_triangleData[indexFuture].point[pointIdx];
-					point.x = clamp(point.x + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageWidth);
-					point.y =clamp(point.y + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageHeight);
-
+					point.x = clamp(point.x + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageWidth-1);
+					point.y = clamp(point.y + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageHeight-1);
 				}
+
 				if ( willMutate(g_settings.mutationRates.pointMaxMoveMutationRate))
 				{
-					int2& point = g_triangleData[indexFuture].point[pointIdx];
 					point.x = fastrand() % g_settings.imageInfo.imageWidth;
 					point.y = fastrand() % g_settings.imageInfo.imageHeight;
 				}
 			}
 
 			//MUTATE COLORS
+			uchar4& components = g_colorData[indexFuture].components;
 			if ( willMutate(g_settings.mutationRates.redMutationRate))
 			{
-				g_colorData[indexFuture].components.x = randomBetween(g_settings.mutationRanges.redRangeMin, g_settings.mutationRanges.redRangeMax);
+				components.x = randomBetween(g_settings.mutationRanges.redRangeMin, g_settings.mutationRanges.redRangeMax);
 			}
 			if ( willMutate(g_settings.mutationRates.greenMutationRate))
 			{
-				g_colorData[indexFuture].components.y = randomBetween(g_settings.mutationRanges.greenRangeMin, g_settings.mutationRanges.greenRangeMax);
+				components.y = randomBetween(g_settings.mutationRanges.greenRangeMin, g_settings.mutationRanges.greenRangeMax);
 			}
 			if ( willMutate(g_settings.mutationRates.blueMutationRate))
 			{
-				g_colorData[indexFuture].components.z = randomBetween(g_settings.mutationRanges.blueRangeMin, g_settings.mutationRanges.blueRangeMax);
+				components.z = randomBetween(g_settings.mutationRanges.blueRangeMin, g_settings.mutationRanges.blueRangeMax);
 			}
 			if ( willMutate(g_settings.mutationRates.alphaMutationRate))
 			{
-				g_colorData[indexFuture].components.w = randomBetween(g_settings.mutationRanges.alphaRangeMin, g_settings.mutationRanges.alphaRangeMax);
+				components.w = randomBetween(g_settings.mutationRanges.alphaRangeMin, g_settings.mutationRanges.alphaRangeMax);
 			}
 		}
 	}
@@ -262,15 +284,15 @@ __global__ void evolveProcess()
 	//Mutate if this strain was a loser
 	if(mutate)
 	{
-		if ( willMutate(g_settings.mutationRates.strainAddTriangleMutationRate))
+		if (willMutate(g_settings.mutationRates.strainAddTriangleMutationRate))
 		{
 			int count = g_triangleCounts[strainFutureId];
 			if (count < g_settings.mutationRanges.strainMaxTriangles)
 			{
-				const unsigned int indexFuture = interleavedIndex(strainFutureId, count, g_settings.mutationRanges.strainMaxTriangles);
+				const unsigned int indexFutureAdd = interleavedIndex(strainFutureId, count, g_settings.mutationRanges.strainMaxTriangles);
 
-				initTriangle(g_triangleData[indexFuture], g_settings);
-				initColor(g_colorData[indexFuture], g_settings);
+				initTriangle(g_triangleData[indexFutureAdd], g_settings);
+				initColor(g_colorData[indexFutureAdd], g_settings);
 
 				g_triangleCounts[strainFutureId]++;
 			}
@@ -319,15 +341,6 @@ extern "C" void launch_cudaRender(dim3 grid, dim3 block)
 	renderProcess<<< grid, block >>>();
 }
 
-struct unit2_sort_x
-{
-	__host__ __device__
-	bool operator()(uint2 x, uint2 y)
-	{
-		return x.x < y.x;
-	}
-};
-
 extern "C" void launch_cudaFitness(dim3 grid, dim3 block, cudaArray* targetArray )
 {
 	//Bind texture
@@ -354,16 +367,35 @@ extern "C" void launch_cudaEvolve(dim3 grid, dim3 block )
 	increaseGeneration();
 }
 
+struct uint2_sort_x
+{
+	__host__ __device__
+	bool operator()(uint2 x, uint2 y)
+	{
+		return x.x < y.x;
+	}
+};
+
 extern "C" uint2 getBestId(Settings &settings, void* fitnessData)
 {
 	//Sort fitness array
 	int arraysize = settings.generationInfo.islandCount * settings.generationInfo.strainCount;
-	thrust::device_ptr<uint2> dev_ptr = thrust::device_pointer_cast((uint2*)fitnessData);
-	thrust::sort(dev_ptr, dev_ptr+arraysize, unit2_sort_x());
+
+	try
+	{
+		thrust::device_ptr<uint2> dev_ptr((uint2*)fitnessData);
+		thrust::sort(dev_ptr, dev_ptr+(arraysize-1), uint2_sort_x());
+	}
+	catch(thrust::system_error &e)
+	{
+		// output an error message and exit
+		std::cerr  << e.what() << std::endl;
+		exit(-1);
+	}
 
 	//Since the best Score as at the start of the block, copy first Uint2 to host and return it
 	uint2 bestId;
-	cudaMemcpy(&bestId, fitnessData, sizeof(uint2), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&bestId, (uint2*)fitnessData, sizeof(uint2), cudaMemcpyDeviceToHost);
 
 	return bestId;
 }

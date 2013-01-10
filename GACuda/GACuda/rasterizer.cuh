@@ -7,13 +7,14 @@ __device__ void clearRaster(int2* rasterLines, int& rasterStart, int& rasterEnd,
 {
 	const int height = settings.imageInfo.imageHeight;
 	const int width = settings.imageInfo.imageWidth;
+	const int strains = settings.generationInfo.strainCount * settings.generationInfo.islandCount;
 
 	for(int line = rasterStart; line <= rasterEnd; ++line){
 
 #ifndef IRASTER
 		const int rasterIdx = line;
 #else
-		const int rasterIdx = line * height;
+		const int rasterIdx = line * strains;
 #endif
 		rasterLines[rasterIdx].x = width+1;
 		rasterLines[rasterIdx].y = -1;
@@ -24,7 +25,7 @@ __device__ void clearRaster(int2* rasterLines, int& rasterStart, int& rasterEnd,
 
 __device__ void passLine(int2& p1, int2& p2, int2* rasterLines, int& rasterStart, int& rasterEnd, Settings& settings)
 {
-	const int height = settings.imageInfo.imageHeight;
+	const int strains = settings.generationInfo.strainCount * settings.generationInfo.islandCount;
 
 	//Process a line into the raster
 	int2 point1 = p1;
@@ -40,7 +41,7 @@ __device__ void passLine(int2& p1, int2& p2, int2* rasterLines, int& rasterStart
 	if (dy == 0.0f) dy = 1.0f;
 
 	//Get Slopes
-	const float	dx = (point2.x - point1.x) /dy;
+	const float	dx = (point2.x - point1.x) / dy;
 
 	const int iY1 = point1.y;
 	const int iY2 = point2.y;
@@ -53,7 +54,7 @@ __device__ void passLine(int2& p1, int2& p2, int2* rasterLines, int& rasterStart
 #ifndef IRASTER
 		const int rasterIdx = y;
 #else
-		const int rasterIdx = y * height;
+		const int rasterIdx = y * strains;
 #endif
 		rasterLines[rasterIdx].x = min((int)x, rasterLines[rasterIdx].x);
 		rasterLines[rasterIdx].y = max((int)x, rasterLines[rasterIdx].y);
@@ -64,24 +65,34 @@ __device__ void passLine(int2& p1, int2& p2, int2* rasterLines, int& rasterStart
 __device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd, uchar4* drawBuffer, float4& color, Settings& settings, int id)
 {
 	const int width = settings.imageInfo.imageWidth;
-	const int height = settings.imageInfo.imageHeight;
+	const int strains = blockDim.x * gridDim.x;
+
 
 	//Draw the current raster
 	uchar4* buffer = drawBuffer;
-	buffer += rasterStart * width; //Skip buffer lines untill starting line
+#ifndef IDRAW
+	buffer += rasterStart * width; 
+#else
+	buffer += rasterStart * width * strains; //Skip buffer lines untill starting line
+#endif
 
 	for(int y=rasterStart; y <= rasterEnd; ++y){
 #ifndef IRASTER
 		const int rasterIdx = y;
 #else
-		const int rasterIdx = y * height;
+		const int rasterIdx = y * strains;
 #endif
 		const int iXmin = rasterLines[rasterIdx].x;
 		const int iXmax = rasterLines[rasterIdx].y;
 
 		const int length = iXmax - iXmin;
-		for(int i=0; i <= length; ++i){
+		for(int i=0; i < length; ++i){
+
+#ifndef IDRAW
 			const int offset = (iXmin  + i );
+#else
+			const int offset = (iXmin  + i ) * strains;
+#endif
 			uchar4 dst = *(buffer + offset);
 			float4 fdst = make_float4(dst.x, dst.y, dst.z, dst.w);
 			uchar4 result = make_uchar4(
@@ -93,7 +104,11 @@ __device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd
 
 			*(buffer + offset) = result;		
 		}
+#ifndef IDRAW
 		buffer += width;
+#else
+		buffer += width * strains;
+#endif
 	}
 }
 
