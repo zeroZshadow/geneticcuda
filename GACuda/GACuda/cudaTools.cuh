@@ -39,7 +39,7 @@ __device__ inline int randomBetween(int aMin, int aMax)
 
 __device__ inline bool willMutate(int rate)
 {
-	return (randomBetween(0, rate) == 0);
+	return ((fastrand() % rate) == 0);
 }
 
 __device__ inline unsigned int interleavedIndex(unsigned int strainId, unsigned int triangleId, unsigned int maxUnits)

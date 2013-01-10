@@ -24,7 +24,7 @@ framework::framework(void)
 	m_cudaFitness = 0;
 
 	m_drawBufferSize = 0;
-	m_BestStrain = 0;
+	m_BestStrain = make_uint2(UINT_MAX, 0);
 
 	//Initialize textures
 	m_TargetTexture = tools::loadTexture("./assets/test.png");
@@ -106,24 +106,28 @@ void framework::process()
 	cudaArray *targetArrayPtr;
 	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaTargetTexture));
 	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&targetArrayPtr, m_cudaTargetTexture, 0, 0));
-	m_BestStrain = launch_cudaFitness(grid, block, targetArrayPtr, m_cudaFitness );
+	launch_cudaFitness(grid, block, targetArrayPtr);
 	CudaCheckError();
 	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaTargetTexture));
 
-	//Copy best image from buffer to texture
-	//TEMP
-	UINT* imagebuffer = (UINT*)m_cudaDrawBuffer;
-	CudaSafeCall(cudaMemcpy(m_cudaBestBuffer, &imagebuffer[m_BestStrain*num_texels], size_tex_data ,cudaMemcpyDeviceToDevice));
-
-	//Copy bestTexture to texture
-	cudaArray *arrayPtr;
-	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaBestTexture));
-	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&arrayPtr, m_cudaBestTexture, 0, 0));
-	CudaSafeCall(cudaMemcpyToArray(arrayPtr, 0, 0, m_cudaBestBuffer, size_tex_data, cudaMemcpyDeviceToDevice));
-	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaBestTexture));
-
 	//WHAT IS THAT? THE IMAGE IS EVOLVING!!
 	launch_cudaEvolve(grid, block);
+	CudaCheckError();
+
+	//DISPLAY BEST IMAGE
+	uint2 bestStrain = getBestId(m_settings, m_cudaFitness);
+	if (bestStrain.x < m_BestStrain.x) //Update stats when new best is better then overall best
+	{
+		m_BestStrain = bestStrain;
+		printf("Best fitness %u\n", m_BestStrain.x);
+
+		//Copy best from drawBuffer to bestBuffer
+		UINT* imagebuffer = (UINT*)m_cudaDrawBuffer;
+		CudaSafeCall(cudaMemcpy(m_cudaBestBuffer, &imagebuffer[m_BestStrain.y*num_texels], size_tex_data ,cudaMemcpyDeviceToDevice));
+
+		//Update texture
+		updateBestTexture();
+	}
 }
 
 void framework::renderScene()
@@ -195,6 +199,8 @@ void framework::allocateGMem()
 
 	//Allocate block for holding best result texture
 	CudaSafeCall(cudaMalloc((void**) &m_cudaBestBuffer, bestsize));
+	CudaSafeCall(cudaMemset(m_cudaBestBuffer, 0, bestsize));
+	updateBestTexture();
 
 	//Allocate block for rasterizing triangles
 	CudaSafeCall(cudaMalloc((void**) &m_cudaRasterLines, rasterlinesize));
@@ -224,4 +230,17 @@ void framework::createBestTexture()
 	CudaSafeCall(cudaGraphicsGLRegisterImage(&m_cudaBestTexture, m_BestTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsNone));
 
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void framework::updateBestTexture()
+{
+	int num_texels = m_settings.imageInfo.imageWidth * m_settings.imageInfo.imageHeight;
+	int size_tex_data = sizeof(UINT) * num_texels;
+
+	//Copy bestTexture to texture
+	cudaArray *arrayPtr;
+	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaBestTexture));
+	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&arrayPtr, m_cudaBestTexture, 0, 0));
+	CudaSafeCall(cudaMemcpyToArray(arrayPtr, 0, 0, m_cudaBestBuffer, size_tex_data, cudaMemcpyDeviceToDevice));
+	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaBestTexture));
 }

@@ -23,7 +23,6 @@ struct MutationRates
 	//String
 	int strainAddTriangleMutationRate;
 	int strainRemoveTriangleMutationRate;
-	int strainMoveTriangleMutationRate;
 };
 
 struct MutationRanges

@@ -26,16 +26,15 @@ void initSettings(Settings& settings)
 	settings.mutationRates.pointMidMoveMutationRate	= 1500;
 	settings.mutationRates.pointMinMoveMutationRate	= 1500;
 	settings.mutationRanges.pointMidMoveRange		= 20;
-	settings.mutationRanges.pointMinMoveRange		= 30;
+	settings.mutationRanges.pointMinMoveRange		= 3;
 
 	//Strain
-	settings.mutationRates.strainAddTriangleMutationRate	= 700;
+	settings.mutationRates.strainAddTriangleMutationRate	= 1500;
 	settings.mutationRates.strainRemoveTriangleMutationRate	= 1500;
-	settings.mutationRates.strainMoveTriangleMutationRate	= 500;
 	settings.mutationRanges.strainMinTriangles = 1;
 	settings.mutationRanges.strainMaxTriangles = 256;
 
 	//Generation & Island
 	settings.generationInfo.strainCount = 32;
-	settings.generationInfo.islandCount = 8;
+	settings.generationInfo.islandCount = 64;
 }

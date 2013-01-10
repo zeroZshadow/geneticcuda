@@ -14,6 +14,7 @@ public:
 	void renderScene();
 	void allocateGMem();
 	void createBestTexture();
+	void updateBestTexture();
 
 private:
 	GLuint m_TargetTexture;
@@ -32,7 +33,7 @@ private:
 	void* m_cudaFitness;
 
 	int m_drawBufferSize;
-	unsigned int m_BestStrain;
+	uint2 m_BestStrain;
 
 	Settings m_settings;
 };

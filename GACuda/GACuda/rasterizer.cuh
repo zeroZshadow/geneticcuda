@@ -5,16 +5,27 @@
 
 __device__ void clearRaster(int2* rasterLines, int& rasterStart, int& rasterEnd, Settings& settings)
 {
+	const int height = settings.imageInfo.imageHeight;
+	const int width = settings.imageInfo.imageWidth;
+
 	for(int line = rasterStart; line <= rasterEnd; ++line){
-		rasterLines[line].x = settings.imageInfo.imageWidth+1;
-		rasterLines[line].y = -1;
+
+#ifndef IRASTER
+		const int rasterIdx = line;
+#else
+		const int rasterIdx = line * height;
+#endif
+		rasterLines[rasterIdx].x = width+1;
+		rasterLines[rasterIdx].y = -1;
 	}
-	rasterStart = settings.imageInfo.imageHeight;
+	rasterStart = height;
 	rasterEnd = 0;
 }
 
 __device__ void passLine(int2& p1, int2& p2, int2* rasterLines, int& rasterStart, int& rasterEnd, Settings& settings)
 {
+	const int height = settings.imageInfo.imageHeight;
+
 	//Process a line into the raster
 	int2 point1 = p1;
 	int2 point2 = p2;
@@ -39,27 +50,39 @@ __device__ void passLine(int2& p1, int2& p2, int2* rasterLines, int& rasterStart
 	rasterEnd = max(iY2, rasterEnd);
 
 	for (int y = iY1; y <= iY2; ++y){
-		rasterLines[y].x = min((int)x, rasterLines[y].x);
-		rasterLines[y].y = max((int)x, rasterLines[y].y);
+#ifndef IRASTER
+		const int rasterIdx = y;
+#else
+		const int rasterIdx = y * height;
+#endif
+		rasterLines[rasterIdx].x = min((int)x, rasterLines[rasterIdx].x);
+		rasterLines[rasterIdx].y = max((int)x, rasterLines[rasterIdx].y);
 		x += dx;
 	}
 }
 
 __device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd, uchar4* drawBuffer, float4& color, Settings& settings, int id)
 {
-	int width = settings.imageInfo.imageWidth;
+	const int width = settings.imageInfo.imageWidth;
+	const int height = settings.imageInfo.imageHeight;
 
 	//Draw the current raster
 	uchar4* buffer = drawBuffer;
-	buffer += width * rasterStart;
+	buffer += rasterStart * width; //Skip buffer lines untill starting line
 
 	for(int y=rasterStart; y <= rasterEnd; ++y){
-		const int iXmin = rasterLines[y].x;
-		const int iXmax = rasterLines[y].y;
+#ifndef IRASTER
+		const int rasterIdx = y;
+#else
+		const int rasterIdx = y * height;
+#endif
+		const int iXmin = rasterLines[rasterIdx].x;
+		const int iXmax = rasterLines[rasterIdx].y;
 
 		const int length = iXmax - iXmin;
 		for(int i=0; i <= length; ++i){
-			uchar4 dst = *(buffer + iXmin + i);
+			const int offset = (iXmin  + i );
+			uchar4 dst = *(buffer + offset);
 			float4 fdst = make_float4(dst.x, dst.y, dst.z, dst.w);
 			uchar4 result = make_uchar4(
 				clamp(fdst.x + color.x, 0.0f, 255.0f),
@@ -68,7 +91,7 @@ __device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd
 				255
 			);
 
-			*(buffer + iXmin + i) = result;		
+			*(buffer + offset) = result;		
 		}
 		buffer += width;
 	}

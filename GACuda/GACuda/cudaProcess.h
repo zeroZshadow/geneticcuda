@@ -9,11 +9,14 @@ extern "C" void
 extern "C" void
 	launch_cudaRender(dim3 grid, dim3 block	);
 
-extern "C" unsigned int
-	launch_cudaFitness(dim3 grid, dim3 block, cudaArray* targetArray, void* fitness	);
+extern "C" void
+	launch_cudaFitness(dim3 grid, dim3 block, cudaArray* targetArray );
 
 extern "C" void
 	launch_cudaEvolve(dim3 grid, dim3 block	);
+
+extern "C" uint2
+	getBestId(Settings &settings, void* fitnessData);
 
 struct Settings;
 extern "C" void

@@ -1,3 +1,5 @@
+#define IRASTER
+
 //Pre include
 #include <helper_cuda.h>
 #include <thrust/device_ptr.h>
@@ -40,18 +42,26 @@ __device__ inline unsigned int getIndex()
 	return (blockDim.x * blockIdx.x) + threadIdx.x;
 }
 
+__device__ inline unsigned int indexToGenerationIndex(const unsigned int index)
+{
+	return (blockDim.x * gridDim.x * ((g_Generation)&1)) + index;
+}
+
+__device__ inline unsigned int indexToFutureIndex(const unsigned int index)
+{
+	return (blockDim.x * gridDim.x * ((g_Generation+1)&1)) + index;
+}
+
 __device__ inline unsigned int getGenerationStrainId()
 {
 	//Timeline offset + Island offset + strain offset
-	const int idx = (blockDim.x * gridDim.x * (g_Generation&1)) + (blockDim.x * blockIdx.x) + threadIdx.x;
-	return idx;
+	return (blockDim.x * gridDim.x * (g_Generation&1)) + (blockDim.x * blockIdx.x) + threadIdx.x;
 }
 
 __device__ inline unsigned int getFutureStrainId()
 {
 	//Timeline+1 offset + Island offset + strain offset
-	const int idx = (blockDim.x * gridDim.x * ((g_Generation+1)&1)) + (blockDim.x * blockIdx.x) + threadIdx.x;
-	return idx;
+	return (blockDim.x * gridDim.x * ((g_Generation+1)&1)) + (blockDim.x * blockIdx.x) + threadIdx.x;
 }
 
 __global__ void initProcess()
@@ -66,7 +76,6 @@ __global__ void initProcess()
 	//Set triangle count to 0 for strain
 	unsigned int minTriangles = g_settings.mutationRanges.strainMinTriangles;
 	triangleCounts[strainId] = minTriangles;
-
 
 	//Initialize first X triangles and colors
 	for (unsigned int i = 0; i < minTriangles; ++i)
@@ -88,27 +97,29 @@ __global__ void renderProcess()
 	int* triangleCounts = g_triangleCounts;
 	Triangle* triangleData = g_triangleData;
 	Color* colorData = g_colorData;
-	uchar4* drawBuffer = g_drawBuffer;
-	int2* rasterLines = g_rasterLines;
 
 	//Offset rasterbuffer
-	rasterLines = &rasterLines[idx * g_settings.imageInfo.imageHeight];
+#ifndef IRASTER
+	int2* rasterLines = &g_rasterLines[idx * g_settings.imageInfo.imageHeight];
+#else
+	int2* rasterLines = &g_rasterLines[idx];
+#endif
 
 	//Offset drawbuffer
-	int imagesize = g_settings.imageInfo.imageWidth * g_settings.imageInfo.imageHeight;
-	int drawOffset = idx * imagesize;
-	drawBuffer = &drawBuffer[drawOffset];
+	const int imagesize = g_settings.imageInfo.imageWidth * g_settings.imageInfo.imageHeight;
+	const int drawOffset = idx * imagesize;
+	uchar4* drawBuffer = &g_drawBuffer[drawOffset];
 
 	//Initialize raster
 	int rasterStart = 0;
 	int rasterEnd = g_settings.imageInfo.imageHeight-1;
 
 	//Loop over triangles
-	int triangleCount = triangleCounts[strainId];
+	const int triangleCount = triangleCounts[strainId];
 	for (int i = 0; i < triangleCount; ++i)
 	{
 		clearRaster(rasterLines, rasterStart, rasterEnd, g_settings);
-		unsigned int index = interleavedIndex(strainId, i, g_settings.mutationRanges.strainMaxTriangles);
+		const unsigned int index = interleavedIndex(strainId, i, g_settings.mutationRanges.strainMaxTriangles);
 
 		
 		for (int j=0; j<3; ++j)
@@ -118,14 +129,15 @@ __global__ void renderProcess()
 			passLine(point1, point2, rasterLines, rasterStart, rasterEnd, g_settings);
 		}
 		//Set color
-		uchar4 color = colorData[index].components;
-		float alphascale = (float)color.w / 255.0f;
+		const uchar4 color = colorData[index].components;
+		const float alphascale = (float)color.w / 255.0f;
 
-		float4 fcolor;
-		fcolor.x = color.x * alphascale;
-		fcolor.y = color.y * alphascale;
-		fcolor.z = color.z * alphascale;
-		fcolor.w = 0;
+		float4 fcolor = make_float4(
+			color.x * alphascale,
+			color.y * alphascale,
+			color.z * alphascale,
+			0
+		);
 
 		//Render triangle
 		renderRaster(rasterLines, rasterStart, rasterEnd, drawBuffer, fcolor, g_settings, strainId);
@@ -135,19 +147,18 @@ __global__ void renderProcess()
 __global__ void fitnessProcess()
 {
 	//Calculate fitness of strain
-	int strainId = getGenerationStrainId();
-	int idx = getIndex();
+	const int strainId = getGenerationStrainId();
+	const int idx = getIndex();
 	unsigned int fitness = 0;
 
 	//Grab global pointers
 	uint2* fitnessBuffer = g_fitnessData;
-	uchar4* drawBuffer = g_drawBuffer;
 
 	//Drawbuffer
 	const int height = g_settings.imageInfo.imageHeight;
 	const int width = g_settings.imageInfo.imageWidth;
 	const int drawOffset = idx * width * height;
-	drawBuffer = &drawBuffer[drawOffset];
+	const uchar4* drawBuffer = &g_drawBuffer[drawOffset];
 
 	int x = 0;
 	int index = 0;
@@ -155,15 +166,15 @@ __global__ void fitnessProcess()
 	{
 		for (x = 0; x < width; ++x)
 		{
-			uchar4 utarget = tex2D(texTarget, x, y);
-			uchar4 ustrain = drawBuffer[index];
+			const uchar4 utarget = tex2D(texTarget, x, y);
+			const uchar4 ustrain = drawBuffer[index];
 			
-			int r = utarget.x - ustrain.x;
-			int g = utarget.y - ustrain.y;
-			int b = utarget.z - ustrain.z;
+			const int r = utarget.x - ustrain.x;
+			const int g = utarget.y - ustrain.y;
+			const int b = utarget.z - ustrain.z;
 
 			fitness += (unsigned int)(r*r + g*g + b*b);
-			++index;
+			index++;
 		}
 	}
 
@@ -172,20 +183,116 @@ __global__ void fitnessProcess()
 
 __global__ void evolveProcess()
 {
-	int strainId = getGenerationStrainId();
-	int strainFutureId = getFutureStrainId();
+	const int strainId = getGenerationStrainId();
+	const int strainFutureId = getFutureStrainId();
+	const int idx = getIndex();
 
-	//Make new strain here based on score
-	//TEMP Clone current strain to next generation
-	int triangleCount = g_triangleCounts[strainId];
+	//const int maxstrains = g_settings.generationInfo.strainCount * g_settings.generationInfo.islandCount;
+
+	//Tournament selection
+	//Pick a random strain from this island
+	//(strainId + randomBetween(0, maxstrains-1)) % maxstrains;
+	const int randomNumber = (threadIdx.x + randomBetween(0, g_settings.generationInfo.strainCount-1)) % g_settings.generationInfo.strainCount;
+	const int randomIdx = (blockDim.x * blockIdx.x) + randomNumber; //scale id to be global //randomNumber;//
+	const int randomGenerationId = indexToGenerationIndex(randomIdx);
+
+	//Compare scores
+	const int winnerId = (g_fitnessData[idx].x < g_fitnessData[randomIdx].x) ? strainId : randomGenerationId;
+	const bool mutate = (winnerId != strainId);
+
+	//Clone winning strain to future strain
+	const int triangleCount = g_triangleCounts[winnerId];
 	g_triangleCounts[strainFutureId] = triangleCount;
-	for (unsigned int i = 0; i < triangleCount; ++i)
+	for (int i = 0; i < triangleCount; ++i)
 	{
-		unsigned int index = interleavedIndex(strainId, i, g_settings.mutationRanges.strainMaxTriangles);
-		unsigned int indexFuture = interleavedIndex(strainFutureId, i, g_settings.mutationRanges.strainMaxTriangles);
+		const unsigned int index = interleavedIndex(winnerId, i, g_settings.mutationRanges.strainMaxTriangles);
+		const unsigned int indexFuture = interleavedIndex(strainFutureId, i, g_settings.mutationRanges.strainMaxTriangles);
 
-		cloneTriangle(g_triangleData[indexFuture], g_triangleData[index]);
-		cloneColor(g_colorData[strainFutureId], g_colorData[index]);
+		cloneTriangle(g_triangleData[indexFuture],	g_triangleData[index]);
+		cloneColor(g_colorData[indexFuture],		g_colorData[index]);
+
+		if(mutate)
+		{
+			//MUTATE POINTS
+			for( int pointIdx = 0; pointIdx < 3; ++pointIdx)
+			{
+				if ( willMutate(g_settings.mutationRates.pointMinMoveMutationRate))
+				{
+					int2& point = g_triangleData[indexFuture].point[pointIdx];
+					point.x = clamp(point.x + randomBetween(-g_settings.mutationRanges.pointMinMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageWidth);
+					point.y = clamp(point.y + randomBetween(-g_settings.mutationRanges.pointMinMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageHeight);
+
+				}
+
+				if ( willMutate(g_settings.mutationRates.pointMidMoveMutationRate))
+				{
+					int2& point = g_triangleData[indexFuture].point[pointIdx];
+					point.x = clamp(point.x + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageWidth);
+					point.y =clamp(point.y + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageHeight);
+
+				}
+				if ( willMutate(g_settings.mutationRates.pointMaxMoveMutationRate))
+				{
+					int2& point = g_triangleData[indexFuture].point[pointIdx];
+					point.x = fastrand() % g_settings.imageInfo.imageWidth;
+					point.y = fastrand() % g_settings.imageInfo.imageHeight;
+				}
+			}
+
+			//MUTATE COLORS
+			if ( willMutate(g_settings.mutationRates.redMutationRate))
+			{
+				g_colorData[indexFuture].components.x = randomBetween(g_settings.mutationRanges.redRangeMin, g_settings.mutationRanges.redRangeMax);
+			}
+			if ( willMutate(g_settings.mutationRates.greenMutationRate))
+			{
+				g_colorData[indexFuture].components.y = randomBetween(g_settings.mutationRanges.greenRangeMin, g_settings.mutationRanges.greenRangeMax);
+			}
+			if ( willMutate(g_settings.mutationRates.blueMutationRate))
+			{
+				g_colorData[indexFuture].components.z = randomBetween(g_settings.mutationRanges.blueRangeMin, g_settings.mutationRanges.blueRangeMax);
+			}
+			if ( willMutate(g_settings.mutationRates.alphaMutationRate))
+			{
+				g_colorData[indexFuture].components.w = randomBetween(g_settings.mutationRanges.alphaRangeMin, g_settings.mutationRanges.alphaRangeMax);
+			}
+		}
+	}
+
+	//Mutate if this strain was a loser
+	if(mutate)
+	{
+		if ( willMutate(g_settings.mutationRates.strainAddTriangleMutationRate))
+		{
+			int count = g_triangleCounts[strainFutureId];
+			if (count < g_settings.mutationRanges.strainMaxTriangles)
+			{
+				const unsigned int indexFuture = interleavedIndex(strainFutureId, count, g_settings.mutationRanges.strainMaxTriangles);
+
+				initTriangle(g_triangleData[indexFuture], g_settings);
+				initColor(g_colorData[indexFuture], g_settings);
+
+				g_triangleCounts[strainFutureId]++;
+			}
+		}
+		if ( willMutate(g_settings.mutationRates.strainRemoveTriangleMutationRate))
+		{
+			int count = g_triangleCounts[strainFutureId];
+			if (count > g_settings.mutationRanges.strainMinTriangles)
+			{
+				//Choose random triangle to remove
+				const unsigned int triangleIdx = fastrand() % count;
+
+				//To remove a triangle, simply clone the last triangle in the list OVER the removed triangle
+				const unsigned int indexFutureEnd = interleavedIndex(strainFutureId, count-1, g_settings.mutationRanges.strainMaxTriangles);
+				const unsigned int indexFutureRemove = interleavedIndex(strainFutureId, triangleIdx, g_settings.mutationRanges.strainMaxTriangles);
+
+				cloneTriangle(g_triangleData[indexFutureRemove], g_triangleData[indexFutureEnd]);
+				cloneColor(g_colorData[indexFutureRemove], g_colorData[indexFutureEnd]);
+
+				g_triangleCounts[strainFutureId]--;
+			}
+		}
 	}
 }
 
@@ -221,7 +328,7 @@ struct unit2_sort_x
 	}
 };
 
-extern "C" unsigned int launch_cudaFitness(dim3 grid, dim3 block, cudaArray* targetArray, void* fitnessData )
+extern "C" void launch_cudaFitness(dim3 grid, dim3 block, cudaArray* targetArray )
 {
 	//Bind texture
 	cudaBindTextureToArray(texTarget, targetArray);
@@ -230,17 +337,6 @@ extern "C" unsigned int launch_cudaFitness(dim3 grid, dim3 block, cudaArray* tar
 
 	//Run fitness function
 	fitnessProcess<<< grid, block >>>();
-
-	//Sort fitness array
-	int arraysize = grid.x*block.x;
-	thrust::device_ptr<uint2> dev_ptr = thrust::device_pointer_cast((uint2*)fitnessData);
-	thrust::sort(dev_ptr, dev_ptr+arraysize, unit2_sort_x());
-
-	//Since the best Score as at the start of the block, copy first Uint2 to host and return it
-	uint2 bestId;
-	cudaMemcpy(&bestId, fitnessData, sizeof(uint2), cudaMemcpyDeviceToHost);
-
-	return bestId.y;
 }
 
 __host__ void increaseGeneration()
@@ -256,6 +352,20 @@ extern "C" void launch_cudaEvolve(dim3 grid, dim3 block )
 	//Generate new strains
 	evolveProcess<<< grid, block >>>();
 	increaseGeneration();
+}
+
+extern "C" uint2 getBestId(Settings &settings, void* fitnessData)
+{
+	//Sort fitness array
+	int arraysize = settings.generationInfo.islandCount * settings.generationInfo.strainCount;
+	thrust::device_ptr<uint2> dev_ptr = thrust::device_pointer_cast((uint2*)fitnessData);
+	thrust::sort(dev_ptr, dev_ptr+arraysize, unit2_sort_x());
+
+	//Since the best Score as at the start of the block, copy first Uint2 to host and return it
+	uint2 bestId;
+	cudaMemcpy(&bestId, fitnessData, sizeof(uint2), cudaMemcpyDeviceToHost);
+
+	return bestId;
 }
 
 extern "C" void uploadConstants(Settings& settings,
