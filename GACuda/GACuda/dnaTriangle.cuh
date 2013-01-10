@@ -14,4 +14,12 @@ __device__ inline void initTriangle(Triangle& triangleData, Settings& settings)
 	}
 }
 
+__device__ inline void cloneTriangle(Triangle& triangleDst, const Triangle& triangleSrc)
+{
+	for( unsigned int j=0; j < 3; ++j)
+	{
+		triangleDst.point[j] = triangleSrc.point[j];
+	}
+}
+
 #endif

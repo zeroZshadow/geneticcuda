@@ -10,9 +10,6 @@
     <Filter Include="code\genetic">
       <UniqueIdentifier>{5d938c96-9314-48d8-bf7c-acc11c15d538}</UniqueIdentifier>
     </Filter>
-    <Filter Include="code\twister">
-      <UniqueIdentifier>{5ed7033a-cbcf-4ab9-9c26-41411de54a67}</UniqueIdentifier>
-    </Filter>
     <Filter Include="code\helper">
       <UniqueIdentifier>{e8b55c2f-56fc-42ed-a0ca-df0bc80fd736}</UniqueIdentifier>
     </Filter>
@@ -41,9 +38,6 @@
     <ClCompile Include="framework.cpp">
       <Filter>code</Filter>
     </ClCompile>
-    <ClCompile Include="mtrand.cpp">
-      <Filter>code\twister</Filter>
-    </ClCompile>
     <ClCompile Include="settings.cpp">
       <Filter>code\helper</Filter>
     </ClCompile>
@@ -69,9 +63,6 @@
     </ClInclude>
     <ClInclude Include="framework.h">
       <Filter>code</Filter>
-    </ClInclude>
-    <ClInclude Include="mtrand.h">
-      <Filter>code\twister</Filter>
     </ClInclude>
     <ClInclude Include="tools.h">
       <Filter>code\helper</Filter>

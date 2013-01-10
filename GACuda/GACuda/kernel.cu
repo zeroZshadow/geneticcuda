@@ -1,5 +1,8 @@
 //Pre include
 #include <helper_cuda.h>
+#include <thrust/device_ptr.h>
+#include <thrust/sort.h>
+
 #include "settings.h"
 #include "dnaStructures.cuh"
 #include "cudaTools.cuh"
@@ -9,21 +12,56 @@
 #include "dnaTriangle.cuh"
 #include "dnaColor.cuh"
 
+//Include renderer
 #include "rasterizer.cuh"
 
+//Temporary for printing text
 #include <stdio.h>
 
-__device__ __constant__ Settings g_settings;
+#include "ErrorCheck.h"
+
+//Global variables
+__device__ __constant__ Settings	g_settings;
+__device__ __constant__ int*		g_triangleCounts;
+__device__ __constant__ Triangle*	g_triangleData;
+__device__ __constant__ Color*		g_colorData;
+__device__ __constant__ uchar4*		g_bestBuffer;
+__device__ __constant__ uchar4*		g_drawBuffer;
+__device__ __constant__ int2*		g_rasterLines;
+__device__ __constant__ uint2*		g_fitnessData;
 
 texture<uchar4, 2, cudaReadModeElementType> texTarget;
+__device__ unsigned int g_Generation = 0;
 
-__global__ void initProcess( void* counts, void* triangles, void* colors )
+
+__device__ inline unsigned int getIndex()
 {
-	int strainId = (blockDim.x * blockIdx.x) + threadIdx.x;
+	//Island offset + strain offset
+	return (blockDim.x * blockIdx.x) + threadIdx.x;
+}
 
-	int* triangleCounts = (int*)counts;
-	Triangle* triangleData = (Triangle*)triangles;
-	Color* colorData = (Color*)colors;
+__device__ inline unsigned int getGenerationStrainId()
+{
+	//Timeline offset + Island offset + strain offset
+	const int idx = (blockDim.x * gridDim.x * (g_Generation&1)) + (blockDim.x * blockIdx.x) + threadIdx.x;
+	return idx;
+}
+
+__device__ inline unsigned int getFutureStrainId()
+{
+	//Timeline+1 offset + Island offset + strain offset
+	const int idx = (blockDim.x * gridDim.x * ((g_Generation+1)&1)) + (blockDim.x * blockIdx.x) + threadIdx.x;
+	return idx;
+}
+
+__global__ void initProcess()
+{
+	const int strainId = getGenerationStrainId();
+
+	//Grab global pointers
+	int* triangleCounts = g_triangleCounts;
+	Triangle* triangleData = g_triangleData;
+	Color* colorData = g_colorData;
 
 	//Set triangle count to 0 for strain
 	unsigned int minTriangles = g_settings.mutationRanges.strainMinTriangles;
@@ -31,7 +69,7 @@ __global__ void initProcess( void* counts, void* triangles, void* colors )
 
 
 	//Initialize first X triangles and colors
-	for( unsigned int i=0; i< minTriangles; ++i)
+	for (unsigned int i = 0; i < minTriangles; ++i)
 	{
 		unsigned int index = interleavedIndex(strainId, i, g_settings.mutationRanges.strainMaxTriangles);
 
@@ -40,31 +78,34 @@ __global__ void initProcess( void* counts, void* triangles, void* colors )
 	}
 }
 
-__global__ void renderProcess(  void* counts, void* triangles, void* colors, void* draw, void* raster )
+__global__ void renderProcess()
 {
 	//Setup basics
-	int strainId = (blockDim.x * blockIdx.x) + threadIdx.x;
-	int* triangleCounts = (int*)counts;
-	Triangle* triangleData = (Triangle*)triangles;
-	Color* colorData = (Color*)colors;
-	uchar4* drawBuffer = (uchar4*)draw;
+	const int strainId = getGenerationStrainId();
+	const int idx = getIndex();
 
-	//raster buffer
-	int2* rasterLines = (int2*)raster;
-	rasterLines = &rasterLines[strainId * g_settings.imageInfo.imageHeight];
+	//Grab global pointers
+	int* triangleCounts = g_triangleCounts;
+	Triangle* triangleData = g_triangleData;
+	Color* colorData = g_colorData;
+	uchar4* drawBuffer = g_drawBuffer;
+	int2* rasterLines = g_rasterLines;
 
-	//Drawbuffer
+	//Offset rasterbuffer
+	rasterLines = &rasterLines[idx * g_settings.imageInfo.imageHeight];
+
+	//Offset drawbuffer
 	int imagesize = g_settings.imageInfo.imageWidth * g_settings.imageInfo.imageHeight;
-	int drawOffset = strainId * imagesize;
+	int drawOffset = idx * imagesize;
 	drawBuffer = &drawBuffer[drawOffset];
 
-	//Initialize rasterizer
+	//Initialize raster
 	int rasterStart = 0;
 	int rasterEnd = g_settings.imageInfo.imageHeight-1;
 
 	//Loop over triangles
 	int triangleCount = triangleCounts[strainId];
-	for( int i=0; i<triangleCount; ++i)
+	for (int i = 0; i < triangleCount; ++i)
 	{
 		clearRaster(rasterLines, rasterStart, rasterEnd, g_settings);
 		unsigned int index = interleavedIndex(strainId, i, g_settings.mutationRanges.strainMaxTriangles);
@@ -91,26 +132,28 @@ __global__ void renderProcess(  void* counts, void* triangles, void* colors, voi
 	}
 }
 
-__global__ void fitnessProcess(  void* draw, void* fitnessData )
+__global__ void fitnessProcess()
 {
 	//Calculate fitness of strain
-	int strainId = (blockDim.x * blockIdx.x) + threadIdx.x;
+	int strainId = getGenerationStrainId();
+	int idx = getIndex();
 	unsigned int fitness = 0;
 
-	uint2* fitnessBuffer = (uint2*)fitnessData;
+	//Grab global pointers
+	uint2* fitnessBuffer = g_fitnessData;
+	uchar4* drawBuffer = g_drawBuffer;
 
 	//Drawbuffer
 	const int height = g_settings.imageInfo.imageHeight;
 	const int width = g_settings.imageInfo.imageWidth;
-	const int drawOffset = strainId * width * height;
-	uchar4* drawBuffer = (uchar4*)draw;
+	const int drawOffset = idx * width * height;
 	drawBuffer = &drawBuffer[drawOffset];
 
 	int x = 0;
 	int index = 0;
-	for( int y=0; y < height; ++y)
+	for (int y = 0; y < height; ++y)
 	{
-		for( x=0; x < width; ++x)
+		for (x = 0; x < width; ++x)
 		{
 			uchar4 utarget = tex2D(texTarget, x, y);
 			uchar4 ustrain = drawBuffer[index];
@@ -124,12 +167,32 @@ __global__ void fitnessProcess(  void* draw, void* fitnessData )
 		}
 	}
 
-	fitnessBuffer[strainId] = make_uint2(fitness, strainId);
+	fitnessBuffer[idx] = make_uint2(fitness, idx);
+}
+
+__global__ void evolveProcess()
+{
+	int strainId = getGenerationStrainId();
+	int strainFutureId = getFutureStrainId();
+
+	//Make new strain here based on score
+	//TEMP Clone current strain to next generation
+	int triangleCount = g_triangleCounts[strainId];
+	g_triangleCounts[strainFutureId] = triangleCount;
+	for (unsigned int i = 0; i < triangleCount; ++i)
+	{
+		unsigned int index = interleavedIndex(strainId, i, g_settings.mutationRanges.strainMaxTriangles);
+		unsigned int indexFuture = interleavedIndex(strainFutureId, i, g_settings.mutationRanges.strainMaxTriangles);
+
+		cloneTriangle(g_triangleData[indexFuture], g_triangleData[index]);
+		cloneColor(g_colorData[strainFutureId], g_colorData[index]);
+	}
 }
 
 __global__ void initRNG()
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	//No generations used, calculate idx directly
+	int idx = getIndex();
 	curand_init(1337, idx, 0, &g_randState[idx]);
 }
 
@@ -138,37 +201,81 @@ extern "C" void	launch_cudaSetupRNG(dim3 grid, dim3 block)
 	initRNG<<<grid, block>>>();
 }
 
-extern "C" void launch_cudaInitialize(dim3 grid, dim3 block, void* counts, void* triangles, void* colors)
+extern "C" void launch_cudaInitialize( dim3 grid, dim3 block )
 {
-	initProcess<<< grid, block >>>( counts, triangles, colors );
+	initProcess<<< grid, block >>>();
 }
 
-extern "C" void launch_cudaRender(dim3 grid, dim3 block, void* counts, void* triangles, void* colors, void* draw, void* raster)
+extern "C" void launch_cudaRender(dim3 grid, dim3 block)
 {
 	//ENGAGE!
-	renderProcess<<< grid, block >>>( counts, triangles, colors, draw, raster );
+	renderProcess<<< grid, block >>>();
 }
 
-extern "C" void launch_cudaFitness(dim3 grid, dim3 block, void* draw, void* best , cudaArray* targetArray, void* fitness )
+struct unit2_sort_x
 {
+	__host__ __device__
+	bool operator()(uint2 x, uint2 y)
+	{
+		return x.x < y.x;
+	}
+};
+
+extern "C" unsigned int launch_cudaFitness(dim3 grid, dim3 block, cudaArray* targetArray, void* fitnessData )
+{
+	//Bind texture
 	cudaBindTextureToArray(texTarget, targetArray);
 	struct cudaChannelFormatDesc desc;
 	cudaGetChannelDesc(&desc, targetArray);
 
-	fitnessProcess<<< grid, block >>>( draw, fitness );
+	//Run fitness function
+	fitnessProcess<<< grid, block >>>();
+
+	//Sort fitness array
+	int arraysize = grid.x*block.x;
+	thrust::device_ptr<uint2> dev_ptr = thrust::device_pointer_cast((uint2*)fitnessData);
+	thrust::sort(dev_ptr, dev_ptr+arraysize, unit2_sort_x());
+
+	//Since the best Score as at the start of the block, copy first Uint2 to host and return it
+	uint2 bestId;
+	cudaMemcpy(&bestId, fitnessData, sizeof(uint2), cudaMemcpyDeviceToHost);
+
+	return bestId.y;
 }
 
-extern "C" void uploadConstants(Settings& settings, curandState* randState)
+__host__ void increaseGeneration()
 {
-	cudaError e = cudaMemcpyToSymbol (g_settings, &settings, sizeof(Settings));
-	if ( e != cudaSuccess)
-	{
-		printf(cudaGetErrorString (e));
-	}
+	unsigned int gen;
+	cudaMemcpyFromSymbol(&gen, g_Generation, sizeof(unsigned int), 0);
+	gen++;
+	cudaMemcpyToSymbol(g_Generation, &gen, sizeof(unsigned int), 0);
+}
 
-	e = cudaMemcpyToSymbol (g_randState, &randState, sizeof(curandState*));
-	if ( e != cudaSuccess)
-	{
-		printf(cudaGetErrorString (e));
-	}
+extern "C" void launch_cudaEvolve(dim3 grid, dim3 block )
+{
+	//Generate new strains
+	evolveProcess<<< grid, block >>>();
+	increaseGeneration();
+}
+
+extern "C" void uploadConstants(Settings& settings,
+	curandState* randState,
+	void* counts,
+	void* triangles,
+	void* colors,
+	void* best,
+	void* draw,
+	void* raster,
+	void* fitness
+)
+{
+	CudaSafeCall(cudaMemcpyToSymbol (g_settings,		&settings,	sizeof(Settings)));
+	CudaSafeCall(cudaMemcpyToSymbol (g_randState,		&randState, sizeof(curandState*)));
+	CudaSafeCall(cudaMemcpyToSymbol (g_triangleCounts,	&counts,	sizeof(int*)));
+	CudaSafeCall(cudaMemcpyToSymbol (g_triangleData,	&triangles, sizeof(Triangle*)));
+	CudaSafeCall(cudaMemcpyToSymbol (g_colorData,		&colors,	sizeof(Color*)));
+	CudaSafeCall(cudaMemcpyToSymbol (g_bestBuffer,		&best,		sizeof(uchar4*)));
+	CudaSafeCall(cudaMemcpyToSymbol (g_drawBuffer,		&draw,		sizeof(uchar4*)));
+	CudaSafeCall(cudaMemcpyToSymbol (g_rasterLines,		&raster,	sizeof(uint2*)));
+	CudaSafeCall(cudaMemcpyToSymbol (g_fitnessData,		&fitness,	sizeof(uint2*)));
 }

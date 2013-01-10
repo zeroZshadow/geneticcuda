@@ -9,4 +9,9 @@ __device__ void initColor(Color& colorData, Settings& settings)
 	colorData.components.w = randomBetween(settings.mutationRanges.alphaRangeMin,	settings.mutationRanges.alphaRangeMax);
 }
 
+__device__ inline void cloneColor(Color& colorDst, const Color& colorSrc)
+{
+	colorDst.color = colorSrc.color;
+}
+
 #endif

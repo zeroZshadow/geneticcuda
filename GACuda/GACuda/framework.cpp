@@ -14,9 +14,9 @@ framework::framework(void)
 	m_TargetTexture = 0;
 	m_BestTexture = 0;
 
+	m_cudaTriangleCounts = 0;
 	m_cudaTriangles = 0;
 	m_cudaColors = 0;
-	m_cudaTriangleCounts = 0;
 	m_cudaDrawBuffer = 0;
 	m_cudaBestBuffer = 0;
 	m_cudaRandState = 0;
@@ -24,6 +24,7 @@ framework::framework(void)
 	m_cudaFitness = 0;
 
 	m_drawBufferSize = 0;
+	m_BestStrain = 0;
 
 	//Initialize textures
 	m_TargetTexture = tools::loadTexture("./assets/test.png");
@@ -35,14 +36,24 @@ framework::framework(void)
 	//Initialize RNG
 	setupRNG(m_settings);
 
-	//Upload constants to CUDA
-	uploadConstants(m_settings, m_cudaRandState);
-
 	//Create best texture memory
 	createBestTexture();
 
 	//Allocate gpu memory blocks
 	allocateGMem();
+
+	//Upload constants to CUDA
+	uploadConstants(
+		m_settings,
+		m_cudaRandState,
+		m_cudaTriangleCounts,
+		m_cudaTriangles,
+		m_cudaColors,
+		m_cudaBestBuffer,
+		m_cudaDrawBuffer,
+		m_cudaRasterLines,
+		m_cudaFitness
+	);
 
 	//Initialize strains
 	initialize();
@@ -72,11 +83,10 @@ void framework::initialize()
 	CudaCheckError();
 
 	printf("Initialize DNA\n");
-	launch_cudaInitialize(grid, block, m_cudaTriangleCounts, m_cudaTriangles, m_cudaColors);
+	launch_cudaInitialize(grid, block);
 	CudaCheckError();
 }
 
-static int imageIndex = 0;
 void framework::process()
 {
 	//Clear draw buffers
@@ -89,26 +99,21 @@ void framework::process()
 	dim3 block(m_settings.generationInfo.strainCount, 1, 1); //generations per island
 
 	//Render strains in drawbuffer
-	launch_cudaRender(grid, block,
-		m_cudaTriangleCounts, m_cudaTriangles, m_cudaColors, m_cudaDrawBuffer, m_cudaRasterLines
-	);
+	launch_cudaRender(grid, block);
 	CudaCheckError();
 
 	//Perform fitness function
 	cudaArray *targetArrayPtr;
 	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaTargetTexture));
 	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&targetArrayPtr, m_cudaTargetTexture, 0, 0));
-	launch_cudaFitness(grid, block,
-		m_cudaDrawBuffer, m_cudaBestBuffer, targetArrayPtr, m_cudaFitness
-	);
+	m_BestStrain = launch_cudaFitness(grid, block, targetArrayPtr, m_cudaFitness );
 	CudaCheckError();
 	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaTargetTexture));
 
 	//Copy best image from buffer to texture
 	//TEMP
-	//imageIndex = (imageIndex + 1) % 256;
 	UINT* imagebuffer = (UINT*)m_cudaDrawBuffer;
-	CudaSafeCall(cudaMemcpy(m_cudaBestBuffer, &imagebuffer[imageIndex*num_texels], size_tex_data ,cudaMemcpyDeviceToDevice));
+	CudaSafeCall(cudaMemcpy(m_cudaBestBuffer, &imagebuffer[m_BestStrain*num_texels], size_tex_data ,cudaMemcpyDeviceToDevice));
 
 	//Copy bestTexture to texture
 	cudaArray *arrayPtr;
@@ -116,6 +121,9 @@ void framework::process()
 	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&arrayPtr, m_cudaBestTexture, 0, 0));
 	CudaSafeCall(cudaMemcpyToArray(arrayPtr, 0, 0, m_cudaBestBuffer, size_tex_data, cudaMemcpyDeviceToDevice));
 	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaBestTexture));
+
+	//WHAT IS THAT? THE IMAGE IS EVOLVING!!
+	launch_cudaEvolve(grid, block);
 }
 
 void framework::renderScene()

@@ -35,32 +35,3 @@ GLuint tools::loadTexture(char* aFilename)
 	til::TIL_Release(image);
 	return textureId;
 }
-
-UINT tools::nextRandom()
-{
-	MTRand_int32 irand;
-	return irand();
-}
-
-int tools::randomBetween( int min, int max )
-{
-	if (min == max)
-		return min;
-
-	MTRand_int32 irand;
-	return (irand()%(max-min))+min;
-}
-
-UINT tools::randomBetweenUINT( UINT min, UINT max )
-{
-	if (min == max)
-		return min;
-
-	MTRand_int32 irand;
-	return (irand()%(max-min))+min;
-}
-
-bool tools::willMutate( UINT rate )
-{
-	return (randomBetweenUINT(0, rate) == 0);
-}

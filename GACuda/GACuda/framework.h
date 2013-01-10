@@ -32,6 +32,7 @@ private:
 	void* m_cudaFitness;
 
 	int m_drawBufferSize;
+	unsigned int m_BestStrain;
 
 	Settings m_settings;
 };
