@@ -189,32 +189,17 @@ __global__ void fitnessProcess()
 __global__ void evolveProcess()
 {
 	const int strainId = getGenerationStrainId();
-	const int strainFutureId = getFutureStrainId();
+	int strainFutureId = getFutureStrainId();
 	const int idx = getIndex();
 
-	const int maxstrains = g_settings.generationInfo.strainCount * g_settings.generationInfo.islandCount;
-
 	//Tournament selection
-	int randomNumber;
-	int randomIdx;
-
-	if ( 0 /*g_Generation & 16*/)
-	{
-		//Select globally
-		randomIdx = (idx + randomBetween(0, maxstrains-1)) % maxstrains;
-	}
-	else
-	{
-		//Select within island
-		randomNumber = (threadIdx.x + randomBetween(0, g_settings.generationInfo.strainCount-1)) % g_settings.generationInfo.strainCount;
-		randomIdx = (blockDim.x * blockIdx.x) + randomNumber; //scale id to be global randomNumber;
-	}
-
+	const int randomNumber = (threadIdx.x + randomBetween(0, g_settings.generationInfo.strainCount-1)) % g_settings.generationInfo.strainCount;
+	const int randomIdx = (blockDim.x * blockIdx.x) + randomNumber; //scale id to be global randomNumber;
 	const int randomGenerationId = indexToGenerationIndex(randomIdx);
 
 	//Compare scores
 	const int winnerId = (g_fitnessData[idx].x < g_fitnessData[randomIdx].x) ? strainId : randomGenerationId;
-	const bool mutate = true;(winnerId != strainId);
+	const bool mutate = (fastrand() % 10) < 9;
 
 	//Clone winning strain to future strain
 	const int triangleCount = g_triangleCounts[winnerId];
