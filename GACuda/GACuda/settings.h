@@ -60,4 +60,4 @@ struct Settings
 	GenerationInfo generationInfo;
 };
 
-void initSettings(Settings& settings);
+void initSettings(Settings& settings, unsigned int width, unsigned int height);

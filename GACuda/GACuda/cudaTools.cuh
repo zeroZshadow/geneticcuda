@@ -11,9 +11,9 @@ __device__ float clamp(float x, float a, float b)
     return min(max(x, a), b);
 }
 
-__device__ inline int wrap(int kX, int const kLowerBound, int const kUpperBound)
+__device__ inline int wrap(int kX, int const kLowerBound, const int kUpperBound)
 {
-    int range_size = kUpperBound - kLowerBound + 1;
+	const int range_size = kUpperBound - kLowerBound + 1;
 
     if (kX < kLowerBound)
         kX += range_size * ((kLowerBound - kX) / range_size + 1);
@@ -23,26 +23,24 @@ __device__ inline int wrap(int kX, int const kLowerBound, int const kUpperBound)
 
 __device__ inline unsigned int fastrand()
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	const int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	return curand(&g_randState[idx]);
 }
 
-__device__ inline int randomBetween(int aMin, int aMax)
+__device__ inline int randomBetween(const int aMin, const int aMax)
 {
 	if (aMin == aMax)
 		return aMin;
 
-	int result = wrap(fastrand(), aMin, aMax);
-
-	return result;
+	return wrap(fastrand(), aMin, aMax);
 }
 
-__device__ inline bool willMutate(int rate)
+__device__ inline bool willMutate(const int rate)
 {
 	return ((fastrand() % rate) == 0);
 }
 
-__device__ inline unsigned int interleavedIndex(unsigned int strainId, unsigned int triangleId, unsigned int maxUnits)
+__device__ inline unsigned int interleavedIndex(const unsigned int strainId, const unsigned int triangleId, const unsigned int maxUnits)
 {
 	return maxUnits * triangleId + strainId;
 }

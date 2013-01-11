@@ -3,13 +3,9 @@
 #include "framework.h"
 #include "cudaProcess.h"
 
-#include "tools.h"
 #include "settings.h"
-#include "dnaTriangle.h"
 
-#include <stdio.h>
-
-framework::framework(void)
+framework::framework(char* filename)
 {
 	m_TargetTexture = 0;
 	m_BestTexture = 0;
@@ -27,11 +23,14 @@ framework::framework(void)
 	m_BestStrain = make_uint2(UINT_MAX, 0);
 
 	//Initialize textures
-	m_TargetTexture = tools::loadTexture("./assets/test.png");
+	if(filename!= NULL)
+		loadTargetImage(filename);
+	else
+		loadTargetImage("./assets/testsmall.png");
 	CudaSafeCall(cudaGraphicsGLRegisterImage(&m_cudaTargetTexture, m_TargetTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsReadOnly));
 
 	//Initialize settings
-	initSettings(m_settings);
+	initSettings(m_settings, m_TargetWidth, m_TargetHeight);
 
 	//Initialize RNG
 	setupRNG(m_settings);
@@ -107,7 +106,7 @@ void framework::process()
 	CudaSafeCall(cudaGraphicsMapResources(1, &m_cudaTargetTexture));
 	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&targetArrayPtr, m_cudaTargetTexture, 0, 0));
 
-	dim3 fitnessblock(m_settings.generationInfo.strainCount, 4, 1);
+	dim3 fitnessblock(m_settings.generationInfo.strainCount, m_settings.imageInfo.imageHeight / 32, 1);
 	launch_cudaFitness(grid, fitnessblock, targetArrayPtr);
 	CudaCheckError();
 
@@ -129,11 +128,7 @@ void framework::process()
 		UINT* imagebuffer = (UINT*)m_cudaDrawBuffer;
 		const unsigned int dpitch = m_settings.generationInfo.islandCount * m_settings.generationInfo.strainCount * sizeof(UINT);
 
-#if 0
-		CudaSafeCall(cudaMemcpy(m_cudaBestBuffer, &imagebuffer[m_BestStrain.y*num_texels], size_tex_data ,cudaMemcpyDeviceToDevice));
-#else
 		CudaSafeCall(cudaMemcpy2D(m_cudaBestBuffer, sizeof(UINT), &imagebuffer[m_BestStrain.y], dpitch , sizeof(UINT), m_settings.imageInfo.imageHeight * m_settings.imageInfo.imageWidth, cudaMemcpyDeviceToDevice));
-#endif
 
 		//Update texture
 		updateBestTexture();
@@ -148,8 +143,8 @@ void framework::renderScene()
 	glLoadIdentity();
 	//Draw here
 	
-	float width = (float)m_settings.imageInfo.imageWidth;
-	float height = (float)m_settings.imageInfo.imageHeight;
+	float width = 256;
+	float height = 256;
 
 	glEnable(GL_TEXTURE_2D);
 
@@ -166,10 +161,10 @@ void framework::renderScene()
 
 	glBindTexture(GL_TEXTURE_2D, m_BestTexture);
 	glBegin(GL_QUADS);
-	glTexCoord2f(0, 0); glVertex3f(256, 256, 0);
-	glTexCoord2f(0, 1); glVertex3f(256, 256+height, 0);
-	glTexCoord2f(1, 1); glVertex3f(256+width, 256+height, 0);
-	glTexCoord2f(1, 0); glVertex3f(256+width, 256, 0);
+	glTexCoord2f(0, 0); glVertex3f(256, 0, 0);
+	glTexCoord2f(0, 1); glVertex3f(256, height, 0);
+	glTexCoord2f(1, 1); glVertex3f(256+width, height, 0);
+	glTexCoord2f(1, 0); glVertex3f(256+width, 0, 0);
 	glEnd();
 
 	//Unbind
@@ -254,4 +249,39 @@ void framework::updateBestTexture()
 	CudaSafeCall(cudaGraphicsSubResourceGetMappedArray(&arrayPtr, m_cudaBestTexture, 0, 0));
 	CudaSafeCall(cudaMemcpyToArray(arrayPtr, 0, 0, m_cudaBestBuffer, size_tex_data, cudaMemcpyDeviceToDevice));
 	CudaSafeCall(cudaGraphicsUnmapResources(1, &m_cudaBestTexture));
+}
+
+void framework::loadTargetImage( char* filename )
+{
+	//Load terrain textures
+	til::Image* image;
+	GLuint textureId = 0;
+	image = til::TIL_Load(filename, TIL_FILE_ABSOLUTEPATH | TIL_DEPTH_A8B8G8R8);
+
+	glGenTextures(1, &textureId);
+
+	if(image == 0 || textureId == 0)
+	{
+		printf("> Could not load texture\n (%i, %i)", image, textureId);
+		return;
+	}
+
+	glBindTexture(GL_TEXTURE_2D, textureId);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);;
+	glTexImage2D(
+		GL_TEXTURE_2D, 0, GL_RGBA,
+		image->GetPitchX(), image->GetPitchY(),
+		0,
+		GL_RGBA, GL_UNSIGNED_BYTE, image->GetPixels()
+		);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	m_TargetWidth = image->GetWidth();
+	m_TargetHeight = image->GetHeight();
+	m_TargetTexture = textureId;
+
+	til::TIL_Release(image);
 }

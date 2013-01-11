@@ -1,11 +1,11 @@
 #include "StdAfx.h"
 #include "settings.h"
 
-void initSettings(Settings& settings)
+void initSettings(Settings& settings, unsigned int width, unsigned int height)
 {
 	//Image info
-	settings.imageInfo.imageWidth	= 256;
-	settings.imageInfo.imageHeight	= 256;
+	settings.imageInfo.imageWidth	= width;
+	settings.imageInfo.imageHeight	= height;
 
 	//Colors
 	settings.mutationRates.alphaMutationRate	= 1500;
@@ -31,10 +31,10 @@ void initSettings(Settings& settings)
 	//Strain
 	settings.mutationRates.strainAddTriangleMutationRate	= 700;
 	settings.mutationRates.strainRemoveTriangleMutationRate	= 1500;
-	settings.mutationRanges.strainMinTriangles = 3;
-	settings.mutationRanges.strainMaxTriangles = 3;
+	settings.mutationRanges.strainMinTriangles = 1;
+	settings.mutationRanges.strainMaxTriangles = 128;
 
 	//Generation & Island
-	settings.generationInfo.strainCount = 16;
-	settings.generationInfo.islandCount = 64;
+	settings.generationInfo.strainCount = 32;
+	settings.generationInfo.islandCount = 1;
 }

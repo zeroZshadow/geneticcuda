@@ -20,8 +20,6 @@
 
 //STD
 #include <vector>
-
-//Mersenne Twister
-#include "mtrand.h"
+#include <stdio.h>
 
 #include "ErrorCheck.h"

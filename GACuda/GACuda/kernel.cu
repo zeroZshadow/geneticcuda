@@ -1,5 +1,5 @@
-#define IRASTER
-#define IDRAW
+//Non-interleaved raster seems faster
+//#define IRASTER
 
 //Pre include
 #include <helper_cuda.h>
@@ -107,13 +107,7 @@ __global__ void renderProcess()
 #endif
 
 	//Offset drawbuffer
-	const int imagesize = g_settings.imageInfo.imageWidth * g_settings.imageInfo.imageHeight;
-#ifndef IDRAW
-	const int drawOffset = idx * imagesize;
-	uchar4* drawBuffer = &g_drawBuffer[drawOffset];
-#else
 	uchar4* drawBuffer = &g_drawBuffer[idx];
-#endif
 
 	//Initialize raster
 	int rasterStart = 0;
@@ -137,7 +131,7 @@ __global__ void renderProcess()
 		const uchar4 color = colorData[index].components;
 		const float alphascale = (float)color.w / 255.0f;
 
-		float4 fcolor = make_float4(
+		float4 scaleColor = make_float4(
 			color.x * alphascale,
 			color.y * alphascale,
 			color.z * alphascale,
@@ -145,7 +139,7 @@ __global__ void renderProcess()
 		);
 
 		//Render triangle
-		renderRaster(rasterLines, rasterStart, rasterEnd, drawBuffer, fcolor, g_settings, strainId);
+		renderRaster(rasterLines, rasterStart, rasterEnd, drawBuffer, scaleColor, g_settings, strainId);
 	}
 }
 
@@ -163,22 +157,14 @@ __global__ void fitnessProcess()
 	//Drawbuffer
 	const int height = g_settings.imageInfo.imageHeight;
 	const int width = g_settings.imageInfo.imageWidth;
-
-#ifndef IDRAW
-	const int drawOffset = idx * width * height;
-	const uchar4* drawBuffer = &g_drawBuffer[drawOffset];
-#else
 	const uchar4* drawBuffer = &g_drawBuffer[idx];
-#endif
+
 
 	int x = 0;
 	int y = (height / blockDim.y) * threadIdx.y;
 	const int ymax = (height / blockDim.y) * (threadIdx.y+1);
-#ifndef IDRAW
-	int index = y * width;
-#else
 	int index = strains * y * width;
-#endif
+
 	for (; y < ymax; ++y)
 	{
 		for (x = 0; x < width; ++x)
@@ -191,11 +177,7 @@ __global__ void fitnessProcess()
 			const int b = utarget.z - ustrain.z;
 
 			fitness += (unsigned int)(r*r + g*g + b*b);
-#ifndef IDRAW
-			++index;
-#else
 			index += strains;
-#endif
 		}
 	}
 	
@@ -213,15 +195,26 @@ __global__ void evolveProcess()
 	const int maxstrains = g_settings.generationInfo.strainCount * g_settings.generationInfo.islandCount;
 
 	//Tournament selection
-	//Pick a random strain from this island
-	//(strainId + randomBetween(0, maxstrains-1)) % maxstrains;
-	const int randomNumber = (idx + randomBetween(0, maxstrains-1)) % maxstrains;//(threadIdx.x + randomBetween(0, g_settings.generationInfo.strainCount-1)) % g_settings.generationInfo.strainCount;
-	const int randomIdx = randomNumber;//(blockDim.x * blockIdx.x) + randomNumber; //scale id to be global
+	int randomNumber;
+	int randomIdx;
+
+	if ( 0 /*g_Generation & 16*/)
+	{
+		//Select globally
+		randomIdx = (idx + randomBetween(0, maxstrains-1)) % maxstrains;
+	}
+	else
+	{
+		//Select within island
+		randomNumber = (threadIdx.x + randomBetween(0, g_settings.generationInfo.strainCount-1)) % g_settings.generationInfo.strainCount;
+		randomIdx = (blockDim.x * blockIdx.x) + randomNumber; //scale id to be global randomNumber;
+	}
+
 	const int randomGenerationId = indexToGenerationIndex(randomIdx);
 
 	//Compare scores
 	const int winnerId = (g_fitnessData[idx].x < g_fitnessData[randomIdx].x) ? strainId : randomGenerationId;
-	const bool mutate = (winnerId != strainId);
+	const bool mutate = true;(winnerId != strainId);
 
 	//Clone winning strain to future strain
 	const int triangleCount = g_triangleCounts[winnerId];
@@ -249,8 +242,8 @@ __global__ void evolveProcess()
 
 				if ( willMutate(g_settings.mutationRates.pointMidMoveMutationRate))
 				{
-					point.x = clamp(point.x + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageWidth-1);
-					point.y = clamp(point.y + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMinMoveRange), 0, g_settings.imageInfo.imageHeight-1);
+					point.x = clamp(point.x + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMidMoveRange), 0, g_settings.imageInfo.imageWidth-1);
+					point.y = clamp(point.y + randomBetween(-g_settings.mutationRanges.pointMidMoveRange, g_settings.mutationRanges.pointMidMoveRange), 0, g_settings.imageInfo.imageHeight-1);
 				}
 
 				if ( willMutate(g_settings.mutationRates.pointMaxMoveMutationRate))

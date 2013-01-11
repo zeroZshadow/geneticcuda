@@ -4,7 +4,7 @@
 class framework
 {
 public:
-	framework(void);
+	framework(char* filename);
 	~framework(void);
 
 	void process();
@@ -13,12 +13,16 @@ public:
 
 	void renderScene();
 	void allocateGMem();
+	void loadTargetImage(char* filename);
 	void createBestTexture();
 	void updateBestTexture();
 
 private:
 	GLuint m_TargetTexture;
 	GLuint m_BestTexture;
+
+	GLuint m_TargetWidth;
+	GLuint m_TargetHeight;
 
 	cudaGraphicsResource* m_cudaTargetTexture;
 	cudaGraphicsResource* m_cudaBestTexture;

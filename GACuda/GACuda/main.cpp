@@ -1,14 +1,10 @@
 #include "StdAfx.h"
 
-// CUDA includes
-//StdAfx
-
 // CUDA utilities and system includes
 #include <helper_cuda.h>
 #include <helper_cuda_gl.h>
 
 #include <helper_functions.h>
-#include <rendercheck_gl.h>
 
 #include "framework.h"
 
@@ -17,11 +13,12 @@
 // constants / global variables
 char* window_title = "Genetic Cuda";
 unsigned int window_width = 512;
-unsigned int window_height = 512;
+unsigned int window_height = 256;
 int iGLUTWindowHandle = 0;          // handle to the GLUT window
 
 static int fpsCount = 0;
 static int fpsLimit = 1;
+static unsigned int framecount = 0;
 StopWatchInterface *timer = NULL;
 
 int   *pArgc = NULL;
@@ -58,7 +55,7 @@ void display()
 
     // flip backbuffer
     glutSwapBuffers();
-
+	framecount++;
 
 	// Update fps counter, fps/title display and log
 	if (++fpsCount == fpsLimit)
@@ -66,10 +63,10 @@ void display()
 		char cTitle[256];
 		float t = sdkGetAverageTimerValue(&timer);
 		float fps = 1000.0f / t;
-		sprintf(cTitle, "%s (%d x %d): %.1f fps", window_title, window_width, window_height, fps);
+		sprintf(cTitle, "%s: %.1f fps %u frames", window_title, fps, framecount);
 		glutSetWindowTitle(cTitle);
 		fpsCount = 0;
-		fpsLimit = (int)((fps > 1.0f) ? fps : 1.0f);
+		fpsLimit = 1;// (int)((fps > 1.0f) ? fps : 1.0f);
 		sdkResetTimer(&timer);
 	}
 }
@@ -105,15 +102,6 @@ void mainMenu(int i)
 int main(int argc, char **argv)
 {
     printf("%s Starting...\n\n", argv[0]);
-
-	//Use later for file loading
-	/*if (checkCmdLineFlag(argc, (const char **)argv, "radius") &&
-		checkCmdLineFlag(argc, (const char **)argv, "file"))
-	{
-
-		getCmdLineArgumentString(argc, (const char **)argv, "file", &ref_file);
-		blur_radius = getCmdLineArgumentInt(argc, (const char **)argv, "radius");
-	}*/
 
     pArgc = &argc;
     pArgv = argv;
@@ -154,6 +142,14 @@ void runStdProgram(int argc, char **argv)
         return;
     }
 
+	char *ref_file = NULL;
+	//Use later for file loading
+	if (checkCmdLineFlag(argc, (const char **)argv, "file"))
+	{
+
+		getCmdLineArgumentString(argc, (const char **)argv, "file", &ref_file);
+	}
+
     // Initialize CUDA context
     initCUDA(argc, argv);
 
@@ -175,13 +171,13 @@ void runStdProgram(int argc, char **argv)
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     printf("\n"
-           "\tControls\n"
-           "\t(right click mouse button for Menu)\n"
-           "\t[esc] - Quit\n\n"
+           "Controls\n"
+           "(right click mouse button for Menu)\n"
+           "[esc] - Quit\n\n"
           );
 
     // start rendering mainloop
-	program = new framework();
+	program = new framework(ref_file);
     glutMainLoop();
 
     // Normally unused return path

@@ -56,8 +56,9 @@ __device__ void passLine(int2& p1, int2& p2, int2* rasterLines, int& rasterStart
 #else
 		const int rasterIdx = y * strains;
 #endif
-		rasterLines[rasterIdx].x = min((int)x, rasterLines[rasterIdx].x);
-		rasterLines[rasterIdx].y = max((int)x, rasterLines[rasterIdx].y);
+		int2& buffer = rasterLines[rasterIdx];
+		buffer.x = min((int)floor(x), rasterLines[rasterIdx].x);
+		buffer.y = max((int)floor(x), rasterLines[rasterIdx].y);
 		x += dx;
 	}
 }
@@ -70,11 +71,7 @@ __device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd
 
 	//Draw the current raster
 	uchar4* buffer = drawBuffer;
-#ifndef IDRAW
-	buffer += rasterStart * width; 
-#else
 	buffer += rasterStart * width * strains; //Skip buffer lines untill starting line
-#endif
 
 	for(int y=rasterStart; y <= rasterEnd; ++y){
 #ifndef IRASTER
@@ -86,29 +83,21 @@ __device__ void renderRaster(int2* rasterLines, int& rasterStart, int& rasterEnd
 		const int iXmax = rasterLines[rasterIdx].y;
 
 		const int length = iXmax - iXmin;
-		for(int i=0; i < length; ++i){
+		for(int i=0; i <= length; ++i){
 
-#ifndef IDRAW
-			const int offset = (iXmin  + i );
-#else
 			const int offset = (iXmin  + i ) * strains;
-#endif
 			uchar4 dst = *(buffer + offset);
 			float4 fdst = make_float4(dst.x, dst.y, dst.z, dst.w);
 			uchar4 result = make_uchar4(
-				clamp(fdst.x + color.x, 0.0f, 255.0f),
-				clamp(fdst.y + color.y, 0.0f, 255.0f),
-				clamp(fdst.z + color.z, 0.0f, 255.0f),
+				min(fdst.x + color.x, 255.0f),
+				min(fdst.y + color.y, 255.0f),
+				min(fdst.z + color.z, 255.0f),
 				255
 			);
 
 			*(buffer + offset) = result;		
 		}
-#ifndef IDRAW
-		buffer += width;
-#else
 		buffer += width * strains;
-#endif
 	}
 }
 

@@ -106,29 +106,19 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dnaColor.cpp" />
-    <ClCompile Include="dnaPoint.cpp" />
-    <ClCompile Include="dnaStrain.cpp" />
-    <ClCompile Include="dnaTriangle.cpp" />
     <ClCompile Include="framework.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="settings.cpp" />
     <ClCompile Include="StdAfx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="tools.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cudaProcess.h" />
-    <ClInclude Include="dnaColor.h" />
-    <ClInclude Include="dnaPoint.h" />
-    <ClInclude Include="dnaStrain.h" />
-    <ClInclude Include="dnaTriangle.h" />
     <ClInclude Include="ErrorCheck.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="StdAfx.h" />
-    <ClInclude Include="tools.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cudaTools.cuh">
